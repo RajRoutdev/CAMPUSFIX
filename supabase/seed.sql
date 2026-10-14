@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- CampusFix Phase 1 — Foundation Seed Data
--- Creates sample colleges, departments, locations, and demo profiles
+-- Creates sample colleges, departments, locations, demo auth users & profiles
 -- ==============================================================================
 
 -- 1. COLLEGES
@@ -30,12 +30,78 @@ VALUES
     ('10000000-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', 'Student Center', 'Ground Floor', 'Campus Cafeteria', 'Dining Area')
 ON CONFLICT (id) DO NOTHING;
 
--- 4. DEMO PROFILES (Corresponding auth users will match these IDs)
--- Student: student@campusfix.edu
--- Staff: staff@campusfix.edu (Electrical)
--- Admin: admin@campusfix.edu
--- Cross-College User: external@beacon.edu (Beacon State University)
+-- 4. DEMO AUTH USERS (Inserted into auth.users to satisfy profiles_id_fkey constraint)
+-- Password for all demo accounts: Password123!
+INSERT INTO auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at
+) VALUES
+    (
+        '00000000-0000-0000-0000-000000000000',
+        'e1111111-1111-1111-1111-111111111111',
+        'authenticated',
+        'authenticated',
+        'student@campusfix.edu',
+        crypt('Password123!', gen_salt('bf')),
+        now(),
+        '{"provider":"email","providers":["email"]}',
+        '{"name":"Aarav Sharma (Student)"}',
+        now(),
+        now()
+    ),
+    (
+        '00000000-0000-0000-0000-000000000000',
+        'e2222222-2222-2222-2222-222222222222',
+        'authenticated',
+        'authenticated',
+        'staff@campusfix.edu',
+        crypt('Password123!', gen_salt('bf')),
+        now(),
+        '{"provider":"email","providers":["email"]}',
+        '{"name":"Rajesh Kumar (Electrician)"}',
+        now(),
+        now()
+    ),
+    (
+        '00000000-0000-0000-0000-000000000000',
+        'e3333333-3333-3333-3333-333333333333',
+        'authenticated',
+        'authenticated',
+        'admin@campusfix.edu',
+        crypt('Password123!', gen_salt('bf')),
+        now(),
+        '{"provider":"email","providers":["email"]}',
+        '{"name":"Dr. Meera Iyer (Campus Admin)"}',
+        now(),
+        now()
+    ),
+    (
+        '00000000-0000-0000-0000-000000000000',
+        'e4444444-4444-4444-4444-444444444444',
+        'authenticated',
+        'authenticated',
+        'external@beacon.edu',
+        crypt('Password123!', gen_salt('bf')),
+        now(),
+        '{"provider":"email","providers":["email"]}',
+        '{"name":"Vikram Patel (External Admin)"}',
+        now(),
+        now()
+    )
+ON CONFLICT (id) DO UPDATE SET
+    encrypted_password = EXCLUDED.encrypted_password,
+    email_confirmed_at = EXCLUDED.email_confirmed_at;
 
+-- 5. DEMO PROFILES (Linked to auth.users via foreign key)
 INSERT INTO public.profiles (id, college_id, name, email, role, department_id)
 VALUES
     ('e1111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'Aarav Sharma (Student)', 'student@campusfix.edu', 'student', NULL),

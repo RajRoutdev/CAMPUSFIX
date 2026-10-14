@@ -37,6 +37,7 @@ const requiredFiles = [
   '.env.local',
   'supabase/migrations/20261014000000_phase1_foundation.sql',
   'supabase/seed.sql',
+  'src/middleware.ts',
   'src/types/database.types.ts',
   'src/types/models.ts',
   'src/lib/supabase/client.ts',
@@ -85,6 +86,10 @@ for (const table of requiredTables) {
 
 assert(sqlContent.includes('campusfix-images'), 'Storage bucket "campusfix-images" configured');
 assert(sqlContent.includes('ticket_number_seq'), 'Ticket number sequence configured (CF-xxxx)');
+assert(sqlContent.includes('GRANT USAGE, SELECT ON SEQUENCE public.ticket_number_seq TO authenticated, anon;'), 'Sequence permissions granted to authenticated users');
+assert(sqlContent.includes('SET search_path = public, pg_temp;'), 'Security search_path set on functions');
+assert(sqlContent.includes("status NOT IN ('VERIFIED', 'CLOSED')"), 'Non-admin status transitions restricted in RLS');
+assert(sqlContent.includes("(image_type = 'resolution' AND (SELECT role FROM public.get_current_profile()) IN ('staff', 'admin'))"), 'Resolution image uploads restricted to staff/admin');
 
 // 3. Check Security Requirements in code
 console.log('\n3. Checking Security Rules...');
@@ -98,12 +103,19 @@ const gitignoreContent = fs.readFileSync(path.join(rootDir, '.gitignore'), 'utf8
 assert(gitignoreContent.includes('.env*.local'), '.gitignore protects .env*.local');
 assert(gitignoreContent.includes('node_modules/'), '.gitignore excludes node_modules');
 
-// 4. Check Demo Accounts
-console.log('\n4. Checking Demo Accounts...');
+const serverContent = fs.readFileSync(path.join(rootDir, 'src/lib/supabase/server.ts'), 'utf8');
+assert(serverContent.includes('getAll()') && serverContent.includes('setAll('), 'Server client uses modern getAll/setAll cookie handlers');
+
+// 4. Check Demo Accounts and Seed Data
+console.log('\n4. Checking Demo Accounts and Seed Script...');
 const demoContent = fs.readFileSync(path.join(rootDir, 'src/lib/auth/demo-accounts.ts'), 'utf8');
 assert(demoContent.includes('student@campusfix.edu'), 'Student demo account configured');
 assert(demoContent.includes('staff@campusfix.edu'), 'Staff demo account configured');
 assert(demoContent.includes('admin@campusfix.edu'), 'Admin demo account configured');
+
+const seedContent = fs.readFileSync(path.join(rootDir, 'supabase/seed.sql'), 'utf8');
+assert(seedContent.includes('INSERT INTO auth.users'), 'Demo users seeded into auth.users to satisfy foreign key constraint');
+assert(seedContent.includes('crypt(\'Password123!\', gen_salt(\'bf\'))'), 'Demo auth users seeded with bcrypt encrypted password');
 
 console.log('\n====================================================');
 console.log(`Summary: ${passCount} PASSED, ${failCount} FAILED`);

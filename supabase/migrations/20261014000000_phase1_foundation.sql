@@ -3,8 +3,9 @@
 -- Multi-college schema with strict RLS and deterministic state constraints
 -- ==============================================================================
 
--- Enable UUID extension
+-- Enable UUID and Cryptographic extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ==============================================================================
 -- 1. COLLEGES TABLE
@@ -58,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- 5. ISSUES TABLE & TICKET NUMBER SEQUENCE
 -- ==============================================================================
 CREATE SEQUENCE IF NOT EXISTS public.ticket_number_seq START 1001;
+GRANT USAGE, SELECT ON SEQUENCE public.ticket_number_seq TO authenticated, anon;
 
 CREATE TABLE IF NOT EXISTS public.issues (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -77,14 +79,15 @@ CREATE TABLE IF NOT EXISTS public.issues (
     resolved_at TIMESTAMPTZ
 );
 
--- Auto-update updated_at timestamp trigger
+-- Auto-update updated_at timestamp trigger with explicit search path
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = now();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public, pg_temp;
 
 DROP TRIGGER IF EXISTS trigger_issues_updated_at ON public.issues;
 CREATE TRIGGER trigger_issues_updated_at
@@ -141,20 +144,23 @@ CREATE INDEX IF NOT EXISTS idx_issues_department_id ON public.issues(department_
 CREATE INDEX IF NOT EXISTS idx_issues_location_id ON public.issues(location_id);
 CREATE INDEX IF NOT EXISTS idx_issue_images_issue_id ON public.issue_images(issue_id);
 CREATE INDEX IF NOT EXISTS idx_issue_matches_issue_id ON public.issue_matches(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_matches_matched_id ON public.issue_matches(matched_issue_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_issue_id ON public.activity_logs(issue_id);
 
 -- ==============================================================================
 -- 10. ROW LEVEL SECURITY (RLS) HELPER FUNCTIONS
 -- ==============================================================================
 
--- Get authenticated user's profile info efficiently
+-- Get authenticated user's profile info safely and efficiently
 CREATE OR REPLACE FUNCTION public.get_current_profile()
 RETURNS TABLE (
     user_id UUID,
     college_id UUID,
     role TEXT,
     department_id UUID
-) SECURITY DEFINER STABLE AS $$
+) SECURITY DEFINER STABLE
+SET search_path = public, pg_temp
+AS $$
 BEGIN
     RETURN QUERY
     SELECT p.id, p.college_id, p.role, p.department_id
@@ -198,11 +204,15 @@ CREATE POLICY "locations_select_policy" ON public.locations
     USING (college_id IN (SELECT college_id FROM public.get_current_profile()));
 
 -- PROFILES:
--- 1. Users can view profiles in the same college (needed to see reporter/assignee names)
+-- 1. Users can view their own profile or profiles in the same college (needed to see reporter/assignee names)
 DROP POLICY IF EXISTS "profiles_select_policy" ON public.profiles;
 CREATE POLICY "profiles_select_policy" ON public.profiles
     FOR SELECT TO authenticated
-    USING (college_id IN (SELECT college_id FROM public.get_current_profile()));
+    USING (
+        id = auth.uid()
+        OR
+        college_id IN (SELECT college_id FROM public.get_current_profile())
+    );
 
 -- 2. Users can insert their own profile matching auth.uid()
 DROP POLICY IF EXISTS "profiles_insert_policy" ON public.profiles;
@@ -250,8 +260,8 @@ CREATE POLICY "issues_insert_policy" ON public.issues
     );
 
 -- 3. UPDATE Policy
---    Staff can update status/resolution of their assigned or department issues
---    Admin can update any issue in their college
+--    Staff can update status/resolution of their assigned or department issues (restricted from closing/verifying)
+--    Admin can update any issue in their college including verification and closure
 DROP POLICY IF EXISTS "issues_update_policy" ON public.issues;
 CREATE POLICY "issues_update_policy" ON public.issues
     FOR UPDATE TO authenticated
@@ -268,6 +278,11 @@ CREATE POLICY "issues_update_policy" ON public.issues
     )
     WITH CHECK (
         college_id IN (SELECT college_id FROM public.get_current_profile())
+        AND (
+            (SELECT role FROM public.get_current_profile()) = 'admin'
+            OR
+            status NOT IN ('VERIFIED', 'CLOSED')
+        )
     );
 
 -- ISSUE IMAGES:
@@ -278,11 +293,17 @@ CREATE POLICY "issue_images_select_policy" ON public.issue_images
         issue_id IN (SELECT id FROM public.issues)
     );
 
+-- Only reporters can add 'original' images; only staff/admin can upload 'resolution' evidence
 DROP POLICY IF EXISTS "issue_images_insert_policy" ON public.issue_images;
 CREATE POLICY "issue_images_insert_policy" ON public.issue_images
     FOR INSERT TO authenticated
     WITH CHECK (
         issue_id IN (SELECT id FROM public.issues)
+        AND (
+            image_type = 'original'
+            OR
+            (image_type = 'resolution' AND (SELECT role FROM public.get_current_profile()) IN ('staff', 'admin'))
+        )
     );
 
 -- ISSUE MATCHES:
