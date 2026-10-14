@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { SeverityBadge } from '@/components/ui/severity-badge';
 import { PREDEFINED_LOCATIONS, formatLocationString } from '@/lib/locations/data';
-import { AiAnalysisResult } from '@/lib/mock-ai/analyzer';
+import { AnalyzeResult } from '@/lib/gemini/schema';
 
 export default function StudentReportPage() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function StudentReportPage() {
   // Workflow State
   const [analyzing, setAnalyzing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<AiAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Editable fields in review step
@@ -94,24 +94,47 @@ export default function StudentReportPage() {
           description: studentDescription,
           locationText,
           imageFileName,
+          imageData: imagePreview,
         }),
       });
 
       if (!res.ok) {
-        throw new Error('Analysis failed');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'AI analysis request failed');
       }
 
-      const data: AiAnalysisResult = await res.json();
+      const data: AnalyzeResult = await res.json();
       setAnalysisResult(data);
       setEditableTitle(data.issue_title);
       setEditableDescription(data.description);
       setEditableCategory(data.category);
       setEditableSeverity(data.severity);
     } catch (err: unknown) {
-      setError('AI Analysis encountered a problem. You can still proceed by entering issue details.');
+      const msg = err instanceof Error ? err.message : 'Analysis failed';
+      setError(`${msg}. You can retry or proceed with manual entry.`);
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const handleManualEntry = () => {
+    const fallbackTitle = studentDescription ? studentDescription.slice(0, 45) : 'Campus Facility Issue';
+    setAnalysisResult({
+      issue_title: fallbackTitle,
+      category: 'Other',
+      severity: 'medium',
+      department: 'Maintenance',
+      description: studentDescription || 'Reported facility problem requiring staff inspection.',
+      safety_risk: false,
+      evidence: ['Directly observed and reported by student'],
+      is_fallback: true,
+      provider: 'fallback-diagnostics',
+    });
+    setEditableTitle(fallbackTitle);
+    setEditableDescription(studentDescription || '');
+    setEditableCategory('Other');
+    setEditableSeverity('medium');
+    setError(null);
   };
 
   // Step 2 -> Submit Final Ticket
@@ -168,9 +191,22 @@ export default function StudentReportPage() {
 
       {error && (
         <Alert variant="destructive">
-          <AlertTriangle className="w-4 h-4" />
-          <AlertTitle className="text-xs font-semibold">Error</AlertTitle>
-          <AlertDescription className="text-xs">{error}</AlertDescription>
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <div className="flex-1 space-y-1">
+            <AlertTitle className="text-xs font-semibold">Analysis Notice</AlertTitle>
+            <AlertDescription className="text-xs">{error}</AlertDescription>
+            <div className="pt-2 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleManualEntry}
+                className="h-7 text-xs bg-white text-slate-800 border-slate-300"
+              >
+                Proceed with Manual Details
+              </Button>
+            </div>
+          </div>
         </Alert>
       )}
 
@@ -329,10 +365,17 @@ export default function StudentReportPage() {
                 </span>
                 <CardTitle className="text-lg">Review AI Suggestions</CardTitle>
               </div>
-              <Badge variant="outline" className="gap-1 bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                <Sparkles className="w-3 h-3 text-blue-600" />
-                AI Suggested
-              </Badge>
+              {analysisResult.is_fallback ? (
+                <Badge variant="outline" className="gap-1 bg-amber-50 text-amber-800 border-amber-200 text-xs">
+                  <Sparkles className="w-3 h-3 text-amber-600" />
+                  Diagnostic Fallback
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                  <Sparkles className="w-3 h-3 text-blue-600" />
+                  Gemini 1.5 Analysis
+                </Badge>
+              )}
             </div>
             <CardDescription className="text-xs">
               Verify the suggested fields below. You can edit any field before official ticket creation.
@@ -340,6 +383,15 @@ export default function StudentReportPage() {
           </CardHeader>
 
           <CardContent className="space-y-6 pt-6">
+            {/* Transparent Fallback Notice if live Gemini is offline */}
+            {analysisResult.is_fallback && (
+              <div className="p-3 rounded-lg bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold">Demo Diagnostics Active:</span> Live Gemini key is offline or unconfigured. Diagnostic fallback generated these suggestions. All fields remain fully editable below.
+                </div>
+              </div>
+            )}
             {/* Safety Risk Alert if flagged */}
             {analysisResult.safety_risk && (
               <Alert variant="destructive">
