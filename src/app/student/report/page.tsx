@@ -218,8 +218,9 @@ export default function StudentReportPage() {
 
       if (matchRes.ok) {
         const matchData = await matchRes.json();
-        if (matchData.has_match && matchData.top_candidate) {
-          setPotentialDuplicate(matchData.top_candidate);
+        const candidate = matchData.top_candidate || matchData.match || (matchData.candidates && matchData.candidates[0]);
+        if (matchData.has_match && candidate) {
+          setPotentialDuplicate(candidate);
           setShowDuplicateModal(true);
           setDuplicateChecking(false);
           return;

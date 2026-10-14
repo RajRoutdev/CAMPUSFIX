@@ -28,7 +28,11 @@ export function Navbar() {
     const checkSession = () => {
       const hasCookie = document.cookie.split(';').some((c) => {
         const trimmed = c.trim();
-        return trimmed.startsWith('campusfix_session=') || trimmed.startsWith('sb-');
+        return (
+          trimmed.startsWith('campusfix_session=') ||
+          trimmed.startsWith('campusfix_logged_in=') ||
+          trimmed.startsWith('sb-')
+        );
       });
       setHasSession(hasCookie);
     };
@@ -45,6 +49,7 @@ export function Navbar() {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
       document.cookie = 'campusfix_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      document.cookie = 'campusfix_logged_in=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
       setHasSession(false);
       setMobileMenuOpen(false);
       router.push('/login');

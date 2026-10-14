@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
       has_match: matchResult.has_match,
       threshold: matchResult.threshold,
       match: matchResult.best_match,
+      top_candidate: matchResult.best_match,
       candidates: matchResult.candidates,
     });
   } catch (err: unknown) {

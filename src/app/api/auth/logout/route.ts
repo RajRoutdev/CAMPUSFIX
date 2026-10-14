@@ -5,6 +5,7 @@ export async function POST() {
   try {
     const cookieStore = cookies();
     cookieStore.delete('campusfix_session');
+    cookieStore.delete('campusfix_logged_in');
 
     return NextResponse.json({ success: true, message: 'Logged out successfully' });
   } catch (err: unknown) {

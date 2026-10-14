@@ -137,6 +137,12 @@ export default function HomePage() {
               return '/admin/dashboard';
             };
 
+            const getLoginHref = () => {
+              if (acc.role === 'student') return '/student/login';
+              if (acc.role === 'staff') return '/staff/login';
+              return '/admin/login';
+            };
+
             return (
               <Card
                 key={acc.role}
@@ -163,7 +169,7 @@ export default function HomePage() {
                   </p>
 
                   <div className="pt-2 flex gap-2">
-                    <Link href={`/login?email=${encodeURIComponent(acc.email)}`} className="w-full">
+                    <Link href={getLoginHref()} className="w-full">
                       <Button variant="outline" className="w-full text-xs font-medium border-slate-200 hover:bg-slate-50">
                         Sign In as {acc.label.split(' ')[0]}
                       </Button>

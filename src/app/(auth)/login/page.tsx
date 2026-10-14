@@ -8,178 +8,75 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/auth/demo-accounts';
-import { createClient } from '@/lib/supabase/client';
+import Link from 'next/link';
 
-function LoginForm() {
+function LoginSelector() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const defaultEmail = searchParams.get('email') || 'student@campusfix.edu';
 
-  const [email, setEmail] = useState(defaultEmail);
-  const [password, setPassword] = useState(DEMO_PASSWORD);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSelectDemo = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword(DEMO_PASSWORD);
-    setError(null);
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const redirectTarget = searchParams.get('redirectTo');
-
-    const navigateToRole = (role: string) => {
-      if (redirectTarget && redirectTarget.startsWith(`/${role}`)) {
-        router.push(redirectTarget);
-      } else if (role === 'admin') {
-        router.push('/admin/dashboard');
-      } else if (role === 'staff') {
-        router.push('/staff/dashboard');
-      } else {
-        router.push('/student/dashboard');
-      }
-    };
-
-    try {
-      // 1. Try Live Supabase Auth
-      try {
-        const supabase = createClient();
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (!signInError) {
-          if (email.includes('admin')) {
-            navigateToRole('admin');
-          } else if (email.includes('staff')) {
-            navigateToRole('staff');
-          } else {
-            navigateToRole('student');
-          }
-          return;
-        }
-      } catch {
-        // Supabase offline or placeholder
-      }
-
-      // 2. Fallback to Demo Auth endpoint (ensures reliable testing & demo readiness)
-      const demoRes = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (demoRes.ok) {
-        const data = await demoRes.json();
-        navigateToRole(data.role);
-        return;
-      }
-
-      const failData = await demoRes.json().catch(() => ({}));
-      setError(failData.error || 'Invalid email or password.');
-      setLoading(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Login failed';
-      setError(msg);
-      setLoading(false);
-    }
-  };
+  const portals = [
+    {
+      role: 'student',
+      label: 'Student Portal',
+      description: 'Report campus issues, view ticket status, and review AI suggestions.',
+      icon: GraduationCap,
+      iconColor: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      borderHover: 'hover:border-blue-300',
+      href: '/student/login',
+    },
+    {
+      role: 'staff',
+      label: 'Staff Portal',
+      description: 'Receive assigned work orders, update status, and submit resolution proof.',
+      icon: Wrench,
+      iconColor: 'text-amber-600',
+      bgColor: 'bg-amber-100',
+      borderHover: 'hover:border-amber-300',
+      href: '/staff/login',
+    },
+    {
+      role: 'admin',
+      label: 'Admin Portal',
+      description: 'Verify resolutions, close tickets, reassign work, and view analytics.',
+      icon: ShieldCheck,
+      iconColor: 'text-rose-600',
+      bgColor: 'bg-rose-100',
+      borderHover: 'hover:border-rose-300',
+      href: '/admin/login',
+    },
+  ];
 
   return (
     <Card className="border-slate-200 shadow-sm">
       <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-bold tracking-tight">Sign In</CardTitle>
+        <CardTitle className="text-2xl font-bold tracking-tight">CampusFix Sign In</CardTitle>
         <CardDescription className="text-xs">
-          Authenticate to access your role-specific CampusFix portal
+          Select your portal to access CampusFix
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Quick Demo Switcher */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Quick Select Demo User
-          </Label>
-          <div className="grid grid-cols-3 gap-2">
-            {DEMO_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.role}
-                type="button"
-                onClick={() => handleSelectDemo(acc.email)}
-                className={`p-2 rounded border text-xs font-medium text-center transition-all ${
-                  email === acc.email
-                    ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary'
-                    : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <div className="flex justify-center mb-1">
-                  {acc.role === 'student' && <GraduationCap className="w-4 h-4 text-blue-600" />}
-                  {acc.role === 'staff' && <Wrench className="w-4 h-4 text-amber-600" />}
-                  {acc.role === 'admin' && <ShieldCheck className="w-4 h-4 text-rose-600" />}
+      <CardContent className="space-y-3">
+        {portals.map((portal) => {
+          const Icon = portal.icon;
+          return (
+            <Link
+              key={portal.role}
+              href={portal.href}
+              className={`block p-4 rounded-lg border border-slate-200 ${portal.borderHover} transition-all hover:shadow-sm`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-full ${portal.bgColor} flex items-center justify-center flex-shrink-0`}>
+                  <Icon className={`w-5 h-5 ${portal.iconColor}`} />
                 </div>
-                {acc.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription className="text-xs">{error}</AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-3">
-          <div className="space-y-1">
-            <Label htmlFor="email" className="text-xs">Email</Label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-9 text-sm"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="password" className="text-xs">Password</Label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-9 text-sm"
-                required
-              />
-            </div>
-          </div>
-
-          <Button type="submit" disabled={loading} className="w-full text-sm mt-2">
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Authenticating...
-              </>
-            ) : (
-              <>
-                Sign In
-                <ArrowRight className="w-4 h-4 ml-1.5" />
-              </>
-            )}
-          </Button>
-        </form>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-slate-900">{portal.label}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{portal.description}</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
+              </div>
+            </Link>
+          );
+        })}
       </CardContent>
       <CardFooter className="flex flex-col text-center text-xs text-slate-500 space-y-1 border-t bg-slate-50/50 pt-4">
         <div>Multi-College isolation enforced via Supabase RLS</div>
@@ -198,7 +95,7 @@ export default function LoginPage() {
           Loading portal...
         </div>
       }>
-        <LoginForm />
+        <LoginSelector />
       </Suspense>
     </div>
   );
