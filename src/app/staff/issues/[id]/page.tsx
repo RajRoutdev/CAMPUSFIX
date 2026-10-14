@@ -46,6 +46,7 @@ export default function StaffIssueDetailPage() {
   const [submittingResolution, setSubmittingResolution] = useState(false);
   const [startingWork, setStartingWork] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   const fetchIssue = async () => {
     if (!id) return;
@@ -150,6 +151,7 @@ export default function StaffIssueDetailPage() {
       await fetchIssue();
       setResolutionNotes('');
       setResolutionImage(null);
+      setFormSuccess('Resolution evidence submitted! Ticket moved to Resolution Submitted status awaiting Admin verification.');
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : 'Failed to submit resolution');
     } finally {
@@ -322,6 +324,16 @@ export default function StaffIssueDetailPage() {
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{formError}</span>
+            </div>
+          )}
+
+          {formSuccess && (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-start gap-2 shadow-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block">Resolution Submitted</span>
+                <span>{formSuccess}</span>
+              </div>
             </div>
           )}
 

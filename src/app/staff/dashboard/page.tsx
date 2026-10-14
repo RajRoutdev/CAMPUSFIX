@@ -57,9 +57,12 @@ export default function StaffDashboardPage() {
     fetchIssues();
   }, [statusFilter, categoryFilter]);
 
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   // Handle Quick Action: Start Work
   const handleStartWork = async (issueId: string) => {
     setActionLoading(issueId);
+    setActionFeedback(null);
     try {
       const res = await fetch(`/api/issues/${issueId}/status`, {
         method: 'PATCH',
@@ -75,9 +78,10 @@ export default function StaffDashboardPage() {
         throw new Error(errData.error || 'Failed to update status');
       }
 
+      setActionFeedback({ type: 'success', message: 'Work commenced! Status updated to In Progress.' });
       await fetchIssues();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Action failed');
+      setActionFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Action failed' });
     } finally {
       setActionLoading(null);
     }
@@ -116,6 +120,25 @@ export default function StaffDashboardPage() {
           Refresh Queue
         </Button>
       </div>
+
+      {actionFeedback && (
+        <div
+          className={`p-3.5 rounded-lg text-xs font-medium flex items-center justify-between border ${
+            actionFeedback.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border-rose-200'
+          }`}
+        >
+          <span>{actionFeedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setActionFeedback(null)}
+            className="text-xs hover:opacity-75 font-bold px-2 py-0.5"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

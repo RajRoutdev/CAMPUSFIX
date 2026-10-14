@@ -42,5 +42,11 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Accessible focus ring defaults */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-1;
   }
 }

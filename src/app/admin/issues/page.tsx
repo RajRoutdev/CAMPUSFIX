@@ -155,8 +155,8 @@ export default function AdminIssuesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
-          <table className="w-full text-left text-xs">
+        <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white shadow-sm">
+          <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
               <tr>
                 <th className="p-3.5 pl-4">Ticket</th>

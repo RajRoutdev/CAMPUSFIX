@@ -41,6 +41,7 @@ export default function AdminIssueDetailPage() {
   const [assigning, setAssigning] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchIssue = async () => {
     if (!id) return;
@@ -71,6 +72,7 @@ export default function AdminIssueDetailPage() {
     if (!issue) return;
     setUpdatingStatus(true);
     setActionMessage(null);
+    setActionError(null);
 
     try {
       const res = await fetch(`/api/issues/${issue.id}/status`, {
@@ -90,7 +92,7 @@ export default function AdminIssueDetailPage() {
       setActionMessage('Resolution successfully verified.');
       await fetchIssue();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Verification failed');
+      setActionError(err instanceof Error ? err.message : 'Verification failed');
     } finally {
       setUpdatingStatus(false);
     }
@@ -101,6 +103,7 @@ export default function AdminIssueDetailPage() {
     if (!issue) return;
     setUpdatingStatus(true);
     setActionMessage(null);
+    setActionError(null);
 
     try {
       const res = await fetch(`/api/issues/${issue.id}/status`, {
@@ -120,7 +123,7 @@ export default function AdminIssueDetailPage() {
       setActionMessage('Ticket officially marked CLOSED.');
       await fetchIssue();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Close action failed');
+      setActionError(err instanceof Error ? err.message : 'Close action failed');
     } finally {
       setUpdatingStatus(false);
     }
@@ -131,6 +134,7 @@ export default function AdminIssueDetailPage() {
     if (!issue) return;
     setAssigning(true);
     setActionMessage(null);
+    setActionError(null);
 
     try {
       const res = await fetch(`/api/issues/${issue.id}/assignment`, {
@@ -149,7 +153,7 @@ export default function AdminIssueDetailPage() {
       setActionMessage('Technician assignment updated.');
       await fetchIssue();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Assignment update failed');
+      setActionError(err instanceof Error ? err.message : 'Assignment update failed');
     } finally {
       setAssigning(false);
     }
@@ -211,6 +215,13 @@ export default function AdminIssueDetailPage() {
         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{actionMessage}</span>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{actionError}</span>
         </div>
       )}
 
