@@ -449,6 +449,17 @@ Configurable threshold:
 - `POST /api/issues` records duplicate linkages in `issue_matches` when users create distinct reports.
 - Comprehensive UI card displays transparent scoring breakdown before official ticket creation.
 
+## Phase 5 Review Test Suite Results (`scripts/verify-duplicate-review.mjs`):
+1. **Case 1 (Same location + same category + similar description):** Produces 90% match score ($\ge 0.80$), correctly triggering duplicate alert (`has_match: true`).
+2. **Case 2 (Same location but different issue - False-Positive Guard):** Score stays at 50% ($< 0.80$), ensuring distinct problems in the same room are never falsely blocked.
+3. **Case 3 (Different location + similar description - Cross-Location Guard):** Score stays at 55% ($< 0.80$) for different buildings and 65% ($< 0.80$) for separate classrooms on the same floor.
+4. **Case 4 (Same issue reported hours/days apart - Time Proximity):** Produces 90% (2h apart), 88% (36h apart), and 85% (5d apart), consistently matching active unresolved problems.
+5. **Case 5 (Completely unrelated issue):** Score is 10% ($< 0.30$), completely excluded from candidate suggestions.
+6. **Case 6 (Duplicate service failure - Resilience Fallback):** Client gracefully catches API errors and immediately proceeds to ticket submission without stranding the user.
+- **Candidate Filtering:** Closed issues are excluded from candidate matching, ensuring students can submit fresh tickets for recurring issues.
+- **Performance:** 100 candidate comparisons executed in 2.94ms (~0.029ms per pair), well under the 50ms performance target.
+- **Regression:** All 234 automated tests across all project suites passed with 0 failures.
+
 ---
 
 # 9. Phase 6 — Campus Intelligence

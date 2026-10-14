@@ -63,7 +63,11 @@ const STOP_WORDS = new Set([
   'than', 'that', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'these', 'they',
   'this', 'those', 'through', 'to', 'too', 'under', 'until', 'up', 'very', 'was', 'wasn', 'we', 'were',
   'what', 'when', 'where', 'which', 'while', 'who', 'whom', 'why', 'with', 'won', 'would', 'you',
-  'your', 'yours', 'yourself', 'yourselves', 'please', 'help', 'urgently', 'kindly'
+  'your', 'yours', 'yourself', 'yourselves', 'please', 'help', 'urgently', 'kindly',
+  // Campus location and generic status tokens (prevent false semantic inflation)
+  'room', 'block', 'floor', 'building', 'campus', 'wing', 'hall', 'area',
+  'problem', 'problems', 'issue', 'issues', 'broken', 'damaged', 'faulty', 'defect',
+  'need', 'needs', 'require', 'repair', 'fixed', 'urgent', 'reported', 'found', 'observed'
 ]);
 
 // Physical campus assets and symptoms keywords
@@ -98,7 +102,7 @@ function tokenize(text: string): { tokens: string[]; keywords: Set<string> } {
   const keywords = new Set<string>();
 
   for (const raw of rawWords) {
-    if (!STOP_WORDS.has(raw) && raw.length > 1) {
+    if (!STOP_WORDS.has(raw) && raw.length > 1 && !/^\d+$/.test(raw)) {
       const stem = normalizeWord(raw);
       tokens.push(stem);
       if (FACILITY_KEYWORDS.has(stem) || FACILITY_KEYWORDS.has(raw)) {
@@ -149,6 +153,20 @@ export function evaluateLocationSimilarity(
   // If detailed location objects exist, check building and floor
   if (incomingLoc && existingLoc) {
     if (incomingLoc.building === existingLoc.building && incomingLoc.floor === existingLoc.floor) {
+      // If both explicitly specify different rooms, reduce score to avoid false positive matches between separate rooms
+      if (
+        incomingLoc.room &&
+        existingLoc.room &&
+        incomingLoc.room.trim().toLowerCase() !== existingLoc.room.trim().toLowerCase()
+      ) {
+        return {
+          score: 0.20,
+          weight,
+          contribution: Number((0.20 * weight).toFixed(3)),
+          reason: `Different room on same floor (${existingLoc.building}, ${existingLoc.floor})`,
+        };
+      }
+
       return {
         score: 0.65,
         weight,
@@ -377,11 +395,9 @@ export function findDuplicateCandidates(
       return false;
     }
 
-    if (issue.status !== 'CLOSED') return true;
-
-    // If closed, only include if closed less than 24 hours ago
-    const closedTime = issue.resolved_at ? new Date(issue.resolved_at).getTime() : new Date(issue.updated_at).getTime();
-    return (now - closedTime) < 24 * 3600 * 1000;
+    // Only evaluate currently active issues with pending repair or verification
+    if (issue.status === 'CLOSED') return false;
+    return true;
   });
 
   const candidates: DuplicateCandidate[] = [];

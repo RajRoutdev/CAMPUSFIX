@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
       if (profile.college_id) {
         query = query.eq('college_id', profile.college_id);
       }
+      query = query.neq('status', 'CLOSED');
 
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
