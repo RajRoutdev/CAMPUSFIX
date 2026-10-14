@@ -39,6 +39,7 @@ export interface Database {
           logo_url?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       departments: {
         Row: {
@@ -62,6 +63,15 @@ export interface Database {
           description?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "departments_college_id_fkey";
+            columns: ["college_id"];
+            isOneToOne: false;
+            referencedRelation: "colleges";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       locations: {
         Row: {
@@ -91,6 +101,15 @@ export interface Database {
           area?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "locations_college_id_fkey";
+            columns: ["college_id"];
+            isOneToOne: false;
+            referencedRelation: "colleges";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       profiles: {
         Row: {
@@ -120,6 +139,22 @@ export interface Database {
           department_id?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "profiles_college_id_fkey";
+            columns: ["college_id"];
+            isOneToOne: false;
+            referencedRelation: "colleges";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "profiles_department_id_fkey";
+            columns: ["department_id"];
+            isOneToOne: false;
+            referencedRelation: "departments";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       issues: {
         Row: {
@@ -173,6 +208,29 @@ export interface Database {
           updated_at?: string;
           resolved_at?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "issues_college_id_fkey";
+            columns: ["college_id"];
+            isOneToOne: false;
+            referencedRelation: "colleges";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "issues_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "issues_reported_by_fkey";
+            columns: ["reported_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       issue_images: {
         Row: {
@@ -196,6 +254,15 @@ export interface Database {
           image_type?: ImageType;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "issue_images_issue_id_fkey";
+            columns: ["issue_id"];
+            isOneToOne: false;
+            referencedRelation: "issues";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       issue_matches: {
         Row: {
@@ -222,6 +289,15 @@ export interface Database {
           reason?: string;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "issue_matches_issue_id_fkey";
+            columns: ["issue_id"];
+            isOneToOne: false;
+            referencedRelation: "issues";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       activity_logs: {
         Row: {
@@ -248,7 +324,19 @@ export interface Database {
           metadata?: Json;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_issue_id_fkey";
+            columns: ["issue_id"];
+            isOneToOne: false;
+            referencedRelation: "issues";
+            referencedColumns: ["id"];
+          }
+        ];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
   };
 }
