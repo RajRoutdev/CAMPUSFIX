@@ -217,8 +217,13 @@ export default function StudentReportPage() {
                     </div>
                   </div>
                 ) : (
-                  <label className="border-2 border-dashed border-slate-300 hover:border-primary/50 hover:bg-blue-50/30 rounded-lg p-6 sm:p-8 flex flex-col items-center justify-center cursor-pointer transition-all bg-slate-50/50">
+                  <label
+                    htmlFor="issue-photo-input"
+                    className="border-2 border-dashed border-slate-300 hover:border-primary/50 hover:bg-blue-50/30 rounded-lg p-6 sm:p-8 flex flex-col items-center justify-center cursor-pointer transition-all bg-slate-50/50"
+                  >
                     <input
+                      id="issue-photo-input"
+                      aria-label="Upload photo of campus issue"
                       type="file"
                       accept="image/*"
                       capture="environment"

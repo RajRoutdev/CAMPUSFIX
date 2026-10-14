@@ -1,13 +1,41 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Wrench, ShieldCheck, GraduationCap, Building2, LogIn } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Wrench, ShieldCheck, GraduationCap, LogIn, LogOut } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    // Check if session cookie is present in browser
+    const checkSession = () => {
+      const hasCookie = document.cookie.split(';').some((c) => {
+        const trimmed = c.trim();
+        return trimmed.startsWith('campusfix_session=') || trimmed.startsWith('sb-');
+      });
+      setHasSession(hasCookie);
+    };
+
+    checkSession();
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      document.cookie = 'campusfix_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      setHasSession(false);
+      router.push('/login');
+      router.refresh();
+    } catch (err) {
+      console.error('Logout error', err);
+    }
+  };
 
   const getRoleBadge = () => {
     if (pathname.startsWith('/student')) {
@@ -67,12 +95,25 @@ export function Navbar() {
               Admin
             </Button>
           </Link>
-          <Link href="/login">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <LogIn className="w-4 h-4" />
-              Sign In
+
+          {hasSession ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="gap-1.5 text-slate-600 hover:text-rose-600"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
             </Button>
-          </Link>
+          ) : (
+            <Link href="/login">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Button>
+            </Link>
+          )}
         </nav>
       </div>
     </header>

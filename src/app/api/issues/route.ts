@@ -7,11 +7,19 @@ import { IssueWithRelations } from '@/types/models';
 export async function GET(req: NextRequest) {
   try {
     const { userId, profile } = await getCurrentUser();
+    if (!userId || !profile) {
+      return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
+    }
 
-    // Check in-memory store first
-    const memoryIssues = getInMemoryIssues();
+    // 1. In-memory issues scoped by user role & ownership
+    let memoryIssues = getInMemoryIssues();
+    if (profile.role === 'student') {
+      memoryIssues = memoryIssues.filter((i) => i.reported_by === userId);
+    } else if (profile.college_id) {
+      memoryIssues = memoryIssues.filter((i) => i.college_id === profile.college_id);
+    }
 
-    // Try Supabase if configured
+    // 2. Try Supabase if configured
     try {
       const supabase = createServerSupabaseClient();
       let query = supabase
@@ -24,17 +32,26 @@ export async function GET(req: NextRequest) {
         `)
         .order('created_at', { ascending: false });
 
-      if (userId) {
+      if (profile.role === 'student') {
         query = query.eq('reported_by', userId);
+      } else if (profile.college_id) {
+        query = query.eq('college_id', profile.college_id);
       }
 
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
-        // Merge with memory issues
-        return NextResponse.json({ issues: [...data, ...memoryIssues] });
+        const seen = new Set<string>();
+        const merged: IssueWithRelations[] = [];
+        for (const item of [...data, ...memoryIssues]) {
+          if (!seen.has(item.id)) {
+            seen.add(item.id);
+            merged.push(item as IssueWithRelations);
+          }
+        }
+        return NextResponse.json({ issues: merged });
       }
     } catch {
-      // Supabase unavailable or placeholder, return memory issues
+      // Supabase unavailable or placeholder, return scoped memory issues
     }
 
     return NextResponse.json({ issues: memoryIssues });
@@ -46,30 +63,42 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Authenticate Request
+    const { userId, profile } = await getCurrentUser();
+    if (!userId || !profile) {
+      return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
+    }
+
     const body = await req.json().catch(() => ({}));
 
     const title = typeof body.title === 'string' ? body.title.trim() : '';
     const description = typeof body.description === 'string' ? body.description.trim() : '';
     const category = typeof body.category === 'string' ? body.category : 'General';
     const severity = ['low', 'medium', 'high', 'critical'].includes(body.severity) ? body.severity : 'medium';
-    const location_id = typeof body.location_id === 'string' ? body.location_id : '10000000-0000-0000-0000-000000000001';
-    const image_url = typeof body.image_url === 'string' ? body.image_url : '';
+    const location_id = typeof body.location_id === 'string' ? body.location_id.trim() : '';
+    const image_url = typeof body.image_url === 'string' ? body.image_url.trim() : '';
     const evidence = Array.isArray(body.evidence) ? body.evidence : [];
 
-    if (!title || !description) {
-      return NextResponse.json(
-        { error: 'Title and description are required' },
-        { status: 400 }
-      );
+    // 2. Strict Input Validation (PRD Section 9 mandates photo and location)
+    if (!title) {
+      return NextResponse.json({ error: 'Issue title is required' }, { status: 400 });
+    }
+    if (!description) {
+      return NextResponse.json({ error: 'Issue description is required' }, { status: 400 });
+    }
+    if (!location_id) {
+      return NextResponse.json({ error: 'Campus location is required' }, { status: 400 });
+    }
+    if (!image_url) {
+      return NextResponse.json({ error: 'Photo of issue is required' }, { status: 400 });
     }
 
-    const { userId, profile } = await getCurrentUser();
-    const reported_by = userId || 'e1111111-1111-1111-1111-111111111111';
-    const college_id = profile?.college_id || '11111111-1111-1111-1111-111111111111';
+    const reported_by = userId;
+    const college_id = profile.college_id || '11111111-1111-1111-1111-111111111111';
 
     let createdIssue: IssueWithRelations | null = null;
 
-    // Try live Supabase insertion
+    // 3. Try live Supabase insertion
     try {
       const supabase = createServerSupabaseClient();
       const { data: issue, error: issueError } = await supabase
@@ -111,7 +140,7 @@ export async function POST(req: NextRequest) {
       // Supabase is using placeholder credentials or connection is unavailable
     }
 
-    // If live Supabase was bypassed or failed, persist to in-memory store
+    // 4. Fallback to in-memory store if live Supabase is not connected
     if (!createdIssue) {
       createdIssue = saveInMemoryIssue({
         title,

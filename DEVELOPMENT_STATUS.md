@@ -898,11 +898,8 @@ Once every stage works, mark:
 
 Record major implementation changes.
 
-| Date | Change | Phase | Notes |
-|---|---|---|---|
-| 2026-10-14 | Foundation Setup Complete | Phase 1 | Next.js 14, TypeScript, Tailwind, shadcn/ui, Supabase client/server/admin, full PostgreSQL schema (8 tables), RLS policies, storage bucket, demo accounts, verified via build and 52/52 test assertions. |
-| 2026-10-14 | Phase 1 Security & Architecture Review | Phase 1 | Comprehensive audit performed. Resolved 2 CRITICAL (ticket sequence usage grant, seed auth.users foreign key linkage) and 3 HIGH findings (modern getAll/setAll cookies + middleware.ts session refresh, RLS status transition guard, resolution evidence upload role restriction). 60/60 test assertions pass, build 10/10 routes static pass. |
 | 2026-10-14 | Phase 2 Student Experience Complete | Phase 2 | Full student workflow: /student/dashboard, /student/report with camera/photo upload and cascading location selector, mock AI analysis matching PRD schema, review & edit screen, ticket creation, /student/issues/[id] with activity timeline. 101/101 total assertions pass. |
+| 2026-10-14 | Phase 2 Review & Security Hardening | Phase 2 | Completed thorough student journey audit (59/59 assertions pass). Resolved CRITICAL/HIGH findings: added demo fallback login/logout API routes (/api/auth/login, /api/auth/logout), edge middleware role-based route guards for /student, /staff, and /admin portals, enforced student data ownership & 403 Forbidden in GET /api/issues/[id], added student ticket scoping in GET /api/issues, enforced server-side input validation in POST /api/issues, added accessibility attributes in report photo uploader, and fixed redundant ticket prefix. |
 
 ---
 

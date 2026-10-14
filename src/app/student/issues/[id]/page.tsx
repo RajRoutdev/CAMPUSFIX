@@ -176,7 +176,7 @@ export default function StudentIssueDetailPage() {
                 Ticket Activity Timeline
               </CardTitle>
               <CardDescription className="text-xs">
-                Traceable operational audit log for CF-{issue.ticket_number}
+                Traceable operational audit log for {issue.ticket_number}
               </CardDescription>
             </CardHeader>
             <CardContent>
