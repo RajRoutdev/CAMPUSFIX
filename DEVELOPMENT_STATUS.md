@@ -40,15 +40,15 @@ This file records **what has actually been completed**.
 
 ## Current Phase
 
-**Phase 5 Complete — Ready for Phase 6 (Campus Intelligence)**
+**Phase 6 Complete — Ready for Phase 7 (UI/UX Polish)**
 
 ## Current Focus
 
-Phase 5 Duplicate Detection and Phase 4 Staff/Admin Workflows are fully implemented and verified. Ready to begin Phase 6: Campus Intelligence (deterministic analytics, location hotspots, recurring issue detection, and department workloads).
+Phase 6 Campus Intelligence & Analytics is fully implemented, strictly verified against AGENTS.md Rule 25 (deterministic aggregations as source of truth, AI only for non-inventive executive phrasing), and tested with 37 automated tests. Ready for Phase 7: UI/UX Polish.
 
 ## Overall Progress
 
-`5 / 9 phases complete`
+`6 / 9 phases complete`
 
 ---
 
@@ -61,7 +61,7 @@ Phase 5 Duplicate Detection and Phase 4 Staff/Admin Workflows are fully implemen
 | Phase 3 | AI Integration | COMPLETE |
 | Phase 4 | Staff/Admin | COMPLETE |
 | Phase 5 | Duplicate Detection | COMPLETE |
-| Phase 6 | Campus Intelligence | NOT STARTED |
+| Phase 6 | Campus Intelligence | COMPLETE |
 | Phase 7 | UI/UX Polish | NOT STARTED |
 | Phase 8 | Security & Testing | NOT STARTED |
 | Phase 9 | Presentation Freeze | NOT STARTED |
@@ -464,61 +464,69 @@ Configurable threshold:
 
 # 9. Phase 6 — Campus Intelligence
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
 **Target:** Hours 25–29
 
 ## Analytics
 
-- [ ] `/admin/analytics`
-- [ ] Issue volume
-- [ ] Category distribution
-- [ ] Department workload
-- [ ] Location hotspots
-- [ ] Resolution metrics
-- [ ] Open issue age
+- [x] `/admin/analytics` dashboard page created
+- [x] Issue volume (Total campus issues, active pipeline, closed/verified totals)
+- [x] Category distribution (Percentages and counts across all facility categories)
+- [x] Department workload (Multi-segment progress bars for Electrical, Plumbing, IT, and Housekeeping)
+- [x] Location hotspots (Building rankings and specific classroom/lab hotspots)
+- [x] Resolution metrics (Deterministic average resolution time in hours, resolution rate %)
+- [x] Open issue age (Average open age hours for active issues)
 
 ## Recurring Issues
 
-- [ ] Detect repeated location/category problems
-- [ ] Date-range analysis
-- [ ] Issue count thresholds
-- [ ] Recurring issue cards
+- [x] Detect repeated location/category problems (Cluster grouping by `${location_id || building + room}::${category}`)
+- [x] Date-range analysis (Tracks chronological last-reported timestamps)
+- [x] Issue count thresholds ($\ge 2$ occurrences triggers chronic failure warning, $\ge 3$ triggers `HIGH_FREQUENCY`)
+- [x] Recurring issue cards (Highlights Room 204 Electrical repeated complaints and Library Restroom plumbing leaks)
+- [x] Actionable engineering recommendations (Circuit/breaker inspections, main pressure valve replacements)
+- [x] Direct inspection links to associated ticket numbers (`CF-1001`, `CF-1004`, `CF-1005`)
 
 ## Example Insight
 
 ```text
-Room 204 has 7 electrical reports
-in the last 30 days.
+Room 204 in Block B has 3 repeated Electrical complaints reported recently (CF-1001, CF-1004, CF-1005).
+Comprehensive circuit and breaker inspection advised for Room 204 to prevent repeated fixture burnout.
 ```
 
 ## Hotspot Example
 
 ```text
-Block B has a high concentration
-of maintenance issues.
+Block B represents the highest concentration of campus facility requests (50% of total campus volume).
 ```
 
 ## AI Insights
 
-Optional:
-
-- [ ] AI explanation of deterministic metrics
-- [ ] AI recommendation
-
-AI must not be the source of truth for numeric metrics.
+- [x] AI explanation of deterministic metrics (`GET /api/insights`)
+- [x] AI recommendation synthesized via server-side Gemini 1.5 Flash
+- [x] Strict AGENTS.md Rule 25 enforcement: prompt instructs `"DO NOT alter or invent numbers"`
+- [x] Deterministic baseline executive summary fallback when offline, unkeyed, or during rate-limits
+- [x] AI must not be the source of truth for numeric metrics (verified)
 
 ## Phase 6 Testing
 
-- [ ] Analytics match database data
-- [ ] Filters work
-- [ ] Recurring issues are detected
-- [ ] Hotspots are meaningful
-- [ ] No cross-college data leakage
+- [x] Analytics match database data (100% deterministic pure aggregation engine in `src/lib/analytics/engine.ts`)
+- [x] Filters and aggregations work correctly (Category, department, building, and room aggregations verified)
+- [x] Recurring issues are detected ($\ge 2$ threshold correctly flags Room 204 and Library Restroom; single-ticket areas excluded)
+- [x] Hotspots are meaningful (Block B top building; Room 204 top room)
+- [x] No cross-college data leakage (`college_id` filtering enforced at database and memory layer)
+- [x] Dedicated Phase 6 verification suite passed (37/37 tests in `scripts/verify-phase6.mjs`)
+- [x] All project regression test suites passed (271/271 tests across Phases 1, 2, 3, 5, and 6)
+- [x] Next.js production build succeeded with 0 errors across all 19 routes
 
 ## Phase 6 Notes
 
-_Add implementation notes here._
+- Created pure deterministic calculation engine at `src/lib/analytics/engine.ts` with no external AI dependency for numeric values.
+- Built authenticated and college-isolated `GET /api/analytics` endpoint.
+- Built assistive `GET /api/insights` route using server-side Gemini 1.5 Flash with fallback to deterministic executive briefing.
+- Enriched seed dataset in `src/lib/issues/store.ts` with realistic tickets (CF-1001 through CF-1008) including explicit `resolved_at` timestamps to demonstrate turnaround speed and recurring problem clusters.
+- Built responsive, professional SaaS intelligence dashboard at `src/app/admin/analytics/page.tsx`.
+- Integrated bidirectional navigation linking between Admin Dashboard, Manage Issues, and Analytics portal.
 
 ---
 

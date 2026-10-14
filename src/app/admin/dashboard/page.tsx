@@ -81,6 +81,12 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link href="/admin/analytics">
+            <Button variant="default" size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
+              <BarChart3 className="w-3.5 h-3.5" />
+              Intelligence &amp; Analytics
+            </Button>
+          </Link>
           <Link href="/admin/issues">
             <Button variant="outline" size="sm" className="gap-1.5">
               Manage All Issues

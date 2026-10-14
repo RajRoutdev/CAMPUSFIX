@@ -253,7 +253,238 @@ function seedInitialIssues() {
   memoryIssues.set(id3, issue3);
   memoryIssues.set(t3, issue3);
 
-  ticketCounter = 1004;
+  // Demo Issue 4: CLOSED (Room 204 Electrical - Recurring failure)
+  const id4 = 'issue-demo-1004';
+  const t4 = 'CF-1004';
+  const time4 = new Date(Date.now() - 48 * 3600 * 1000).toISOString(); // 2 days ago
+  const resTime4 = new Date(Date.now() - 36 * 3600 * 1000).toISOString(); // resolved 36h ago
+
+  const issue4: IssueWithRelations = {
+    id: id4,
+    ticket_number: t4,
+    college_id: collegeId,
+    reported_by: studentId,
+    title: 'Fluorescent Tube Light Buzzing and Flickering',
+    description: 'Tube fixture near whiteboard in Room 204 emits humming noise and strobes intermittently.',
+    category: 'Electrical',
+    severity: 'medium',
+    status: 'CLOSED',
+    department_id: electricalDeptId,
+    assigned_to: staffId,
+    location_id: PREDEFINED_LOCATIONS[0].id, // Room 204
+    created_at: time4,
+    updated_at: resTime4,
+    resolved_at: resTime4,
+    location: PREDEFINED_LOCATIONS[0],
+    department: {
+      id: electricalDeptId,
+      college_id: collegeId,
+      name: 'Electrical',
+      description: 'Power distribution, lighting, fans',
+      created_at: time4,
+    },
+    assignee: {
+      id: staffId,
+      college_id: collegeId,
+      name: 'Rajesh Kumar (Electrician)',
+      email: 'staff@campusfix.edu',
+      role: 'staff',
+      department_id: electricalDeptId,
+      created_at: time4,
+    },
+    images: [
+      {
+        id: 'img-1004-orig',
+        issue_id: id4,
+        image_url: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=800&q=80',
+        image_type: 'original',
+        created_at: time4,
+      },
+    ],
+    activity_logs: [
+      {
+        id: 'act-1004-1',
+        issue_id: id4,
+        user_id: studentId,
+        action: 'CREATED',
+        metadata: { title: 'Fluorescent Tube Light Buzzing and Flickering' },
+        created_at: time4,
+      },
+      {
+        id: 'act-1004-2',
+        issue_id: id4,
+        user_id: staffId,
+        action: 'CLOSED',
+        metadata: { notes: 'Replaced ballast and fitted new LED starter tube.' },
+        created_at: resTime4,
+      },
+    ],
+  };
+  memoryIssues.set(id4, issue4);
+  memoryIssues.set(t4, issue4);
+
+  // Demo Issue 5: CLOSED (Room 204 Electrical - 3rd recurring issue)
+  const id5 = 'issue-demo-1005';
+  const t5 = 'CF-1005';
+  const time5 = new Date(Date.now() - 96 * 3600 * 1000).toISOString(); // 4 days ago
+  const resTime5 = new Date(Date.now() - 88 * 3600 * 1000).toISOString(); // resolved 8h later
+
+  const issue5: IssueWithRelations = {
+    id: id5,
+    ticket_number: t5,
+    college_id: collegeId,
+    reported_by: studentId,
+    title: 'Loose AC Switch Box Sparking on Wall',
+    description: 'Air conditioner connection box in Room 204 has loose internal terminals.',
+    category: 'Electrical',
+    severity: 'high',
+    status: 'CLOSED',
+    department_id: electricalDeptId,
+    assigned_to: staffId,
+    location_id: PREDEFINED_LOCATIONS[0].id, // Room 204
+    created_at: time5,
+    updated_at: resTime5,
+    resolved_at: resTime5,
+    location: PREDEFINED_LOCATIONS[0],
+    department: {
+      id: electricalDeptId,
+      college_id: collegeId,
+      name: 'Electrical',
+      description: 'Power distribution, lighting, fans',
+      created_at: time5,
+    },
+    assignee: {
+      id: staffId,
+      college_id: collegeId,
+      name: 'Rajesh Kumar (Electrician)',
+      email: 'staff@campusfix.edu',
+      role: 'staff',
+      department_id: electricalDeptId,
+      created_at: time5,
+    },
+    images: [],
+    activity_logs: [],
+  };
+  memoryIssues.set(id5, issue5);
+  memoryIssues.set(t5, issue5);
+
+  // Demo Issue 6: CLOSED (Computer Lab 1 - Classroom Equipment / IT)
+  const id6 = 'issue-demo-1006';
+  const t6 = 'CF-1006';
+  const time6 = new Date(Date.now() - 14 * 3600 * 1000).toISOString();
+  const resTime6 = new Date(Date.now() - 9 * 3600 * 1000).toISOString(); // 5h resolution time
+
+  const issue6: IssueWithRelations = {
+    id: id6,
+    ticket_number: t6,
+    college_id: collegeId,
+    reported_by: studentId,
+    title: 'Ceiling Projector HDMI Port Not Displaying Video',
+    description: 'Ceiling mounted classroom projector displays blue screen despite active HDMI laptop connection.',
+    category: 'Classroom Equipment',
+    severity: 'medium',
+    status: 'CLOSED',
+    department_id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    assigned_to: staffId,
+    location_id: PREDEFINED_LOCATIONS[4].id, // Computer Lab 1 (Block A)
+    created_at: time6,
+    updated_at: resTime6,
+    resolved_at: resTime6,
+    location: PREDEFINED_LOCATIONS[4],
+    department: {
+      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      college_id: collegeId,
+      name: 'IT Support',
+      description: 'Networking, computing, projectors',
+      created_at: time6,
+    },
+    images: [],
+    activity_logs: [],
+  };
+  memoryIssues.set(id6, issue6);
+  memoryIssues.set(t6, issue6);
+
+  // Demo Issue 7: IN_PROGRESS (Central Library - Plumbing recurring failure)
+  const id7 = 'issue-demo-1007';
+  const t7 = 'CF-1007';
+  const time7 = new Date(Date.now() - 8 * 3600 * 1000).toISOString();
+
+  const issue7: IssueWithRelations = {
+    id: id7,
+    ticket_number: t7,
+    college_id: collegeId,
+    reported_by: studentId,
+    title: 'Flush Tank Valve Sticking in Library Restroom',
+    description: 'Water continuously overflows from flush tank into toilet bowl in Central Library.',
+    category: 'Plumbing',
+    severity: 'medium',
+    status: 'IN_PROGRESS',
+    department_id: plumbingDeptId,
+    assigned_to: staffId,
+    location_id: PREDEFINED_LOCATIONS[2].id, // Central Library
+    created_at: time7,
+    updated_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+    resolved_at: null,
+    location: PREDEFINED_LOCATIONS[2],
+    department: {
+      id: plumbingDeptId,
+      college_id: collegeId,
+      name: 'Plumbing',
+      description: 'Water supply, drainage, restroom fittings',
+      created_at: time7,
+    },
+    assignee: {
+      id: staffId,
+      college_id: collegeId,
+      name: 'Rajesh Kumar (Electrician)',
+      email: 'staff@campusfix.edu',
+      role: 'staff',
+      department_id: plumbingDeptId,
+      created_at: time7,
+    },
+    images: [],
+    activity_logs: [],
+  };
+  memoryIssues.set(id7, issue7);
+  memoryIssues.set(t7, issue7);
+
+  // Demo Issue 8: CLOSED (Campus Cafeteria - Cleanliness)
+  const id8 = 'issue-demo-1008';
+  const t8 = 'CF-1008';
+  const time8 = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
+  const resTime8 = new Date(Date.now() - 4 * 3600 * 1000).toISOString(); // 2h resolution time
+
+  const issue8: IssueWithRelations = {
+    id: id8,
+    ticket_number: t8,
+    college_id: collegeId,
+    reported_by: studentId,
+    title: 'Beverage Spill on Cafeteria Main Walkway',
+    description: 'Slippery floor near beverage dispenser station posing slip risk.',
+    category: 'Cleanliness',
+    severity: 'low',
+    status: 'CLOSED',
+    department_id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    assigned_to: staffId,
+    location_id: PREDEFINED_LOCATIONS[5].id, // Campus Cafeteria
+    created_at: time8,
+    updated_at: resTime8,
+    resolved_at: resTime8,
+    location: PREDEFINED_LOCATIONS[5],
+    department: {
+      id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+      college_id: collegeId,
+      name: 'Housekeeping',
+      description: 'Cleaning, sanitation, grounds',
+      created_at: time8,
+    },
+    images: [],
+    activity_logs: [],
+  };
+  memoryIssues.set(id8, issue8);
+  memoryIssues.set(t8, issue8);
+
+  ticketCounter = 1009;
 }
 
 // Initialize seed data

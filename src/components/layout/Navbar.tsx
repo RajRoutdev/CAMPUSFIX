@@ -91,10 +91,17 @@ export function Navbar() {
             </Button>
           </Link>
           <Link href="/admin/dashboard">
-            <Button variant={pathname.startsWith('/admin') ? 'default' : 'ghost'} size="sm">
+            <Button variant={pathname === '/admin/dashboard' || pathname.startsWith('/admin/issues') ? 'default' : 'ghost'} size="sm">
               Admin
             </Button>
           </Link>
+          {pathname.startsWith('/admin') && (
+            <Link href="/admin/analytics">
+              <Button variant={pathname.startsWith('/admin/analytics') ? 'default' : 'ghost'} size="sm">
+                Analytics
+              </Button>
+            </Link>
+          )}
 
           {hasSession ? (
             <Button

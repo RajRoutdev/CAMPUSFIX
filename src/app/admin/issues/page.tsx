@@ -14,6 +14,7 @@ import {
   Building,
   User,
   ShieldCheck,
+  BarChart3,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,11 +79,19 @@ export default function AdminIssuesPage() {
           </p>
         </div>
 
-        <Link href="/admin/dashboard">
-          <Button variant="outline" size="sm">
-            Back to Dashboard
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/analytics">
+            <Button variant="default" size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
+              <BarChart3 className="w-3.5 h-3.5" />
+              Intelligence &amp; Analytics
+            </Button>
+          </Link>
+          <Link href="/admin/dashboard">
+            <Button variant="outline" size="sm">
+              Back to Dashboard
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filter Toolbar */}
