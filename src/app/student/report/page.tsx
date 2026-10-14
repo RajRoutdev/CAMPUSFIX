@@ -25,8 +25,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { SeverityBadge } from '@/components/ui/severity-badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { PREDEFINED_LOCATIONS, formatLocationString } from '@/lib/locations/data';
 import { AnalyzeResult } from '@/lib/gemini/schema';
+import type { DuplicateCandidate } from '@/lib/duplicates/detector';
 
 export default function StudentReportPage() {
   const router = useRouter();
@@ -40,7 +42,11 @@ export default function StudentReportPage() {
   // Workflow State
   const [analyzing, setAnalyzing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [duplicateChecking, setDuplicateChecking] = useState(false);
+  const [followingTicket, setFollowingTicket] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeResult | null>(null);
+  const [potentialDuplicate, setPotentialDuplicate] = useState<DuplicateCandidate | null>(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Editable fields in review step
@@ -137,29 +143,36 @@ export default function StudentReportPage() {
     setError(null);
   };
 
-  // Step 2 -> Submit Final Ticket
-  const handleSubmitTicket = async () => {
-    if (!editableTitle.trim()) {
-      setError('Issue title cannot be blank');
-      return;
-    }
-
+  // Execute actual issue creation in API
+  const executeCreateTicket = async (matchLink?: {
+    matched_issue_id: string;
+    match_score: number;
+    match_reason: string;
+  }) => {
     setSubmitting(true);
     setError(null);
 
     try {
+      const payload: any = {
+        title: editableTitle,
+        description: editableDescription,
+        category: editableCategory,
+        severity: editableSeverity,
+        location_id: selectedLocationId,
+        image_url: imagePreview,
+        evidence: analysisResult?.evidence || [],
+      };
+
+      if (matchLink) {
+        payload.matched_issue_id = matchLink.matched_issue_id;
+        payload.match_score = matchLink.match_score;
+        payload.match_reason = matchLink.match_reason;
+      }
+
       const res = await fetch('/api/issues', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editableTitle,
-          description: editableDescription,
-          category: editableCategory,
-          severity: editableSeverity,
-          location_id: selectedLocationId,
-          image_url: imagePreview,
-          evidence: analysisResult?.evidence || [],
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -174,6 +187,84 @@ export default function StudentReportPage() {
       setError(msg);
       setSubmitting(false);
     }
+  };
+
+  // Step 2 -> Submit: First perform duplicate detection
+  const handleSubmitTicket = async () => {
+    if (!editableTitle.trim()) {
+      setError('Issue title cannot be blank');
+      return;
+    }
+
+    setDuplicateChecking(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location_id: selectedLocationId,
+          category: editableCategory,
+          title: editableTitle,
+          description: editableDescription,
+          threshold: 0.80,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.has_match && data.match) {
+          setPotentialDuplicate(data.match);
+          setShowDuplicateModal(true);
+          setDuplicateChecking(false);
+          return;
+        }
+      }
+    } catch (checkErr) {
+      // Graceful fallback: If duplicate detection fails, user can still submit
+      console.warn('Duplicate detection call failed, proceeding to submit directly', checkErr);
+    } finally {
+      setDuplicateChecking(false);
+    }
+
+    // No duplicate found or duplicate check errored: proceed directly
+    await executeCreateTicket();
+  };
+
+  // User decision: Follow Existing Issue
+  const handleFollowExistingIssue = async () => {
+    if (!potentialDuplicate) return;
+    setFollowingTicket(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/issues/${potentialDuplicate.ticket_number}/follow`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to subscribe to ticket');
+      }
+
+      router.push(`/student/issues/${potentialDuplicate.ticket_number}?subscribed=true`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to follow issue';
+      setError(msg);
+      setFollowingTicket(false);
+    }
+  };
+
+  // User decision: Create New Report Anyway
+  const handleCreateAnyway = async () => {
+    if (!potentialDuplicate) return;
+    setShowDuplicateModal(false);
+    await executeCreateTicket({
+      matched_issue_id: potentialDuplicate.issue_id,
+      match_score: potentialDuplicate.score,
+      match_reason: potentialDuplicate.reasons.join('; '),
+    });
   };
 
   const currentLocation = PREDEFINED_LOCATIONS.find((l) => l.id === selectedLocationId);
@@ -354,6 +445,147 @@ export default function StudentReportPage() {
             </form>
           </CardContent>
         </Card>
+      ) : showDuplicateModal && potentialDuplicate ? (
+        /* POTENTIAL DUPLICATE DETECTED VIEW */
+        <Card className="border-amber-300 shadow-md bg-amber-50/20">
+          <CardHeader className="border-b border-amber-100 bg-amber-50/50 pb-4">
+            <div className="flex items-center justify-between">
+              <Badge variant="warning" className="gap-1.5 text-xs py-1 px-2.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                Potential Duplicate Issue Detected
+              </Badge>
+              <span className="font-mono text-xs font-bold text-amber-800 bg-amber-200/80 px-2.5 py-0.5 rounded-full">
+                {potentialDuplicate.percentage}% Match
+              </span>
+            </div>
+            <CardTitle className="text-xl text-slate-900 mt-2">
+              Similar Issue Already Exists
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-600">
+              CampusFix identified an active ticket reported for this location and equipment.
+              To avoid duplicate tickets, you can follow this ticket to get live resolution updates, or file a separate report.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-5 pt-5">
+            {/* Existing Ticket Summary Card */}
+            <div className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                    {potentialDuplicate.ticket_number}
+                  </span>
+                  <StatusBadge status={potentialDuplicate.status} />
+                </div>
+                <SeverityBadge severity={potentialDuplicate.severity} />
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  {potentialDuplicate.title}
+                </h4>
+                <p className="text-xs text-slate-600 mt-1 line-clamp-2">
+                  {potentialDuplicate.description}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-1 border-t">
+                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>{potentialDuplicate.location_label}</span>
+              </div>
+            </div>
+
+            {/* Match Scoring & Reasons Breakdown */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+                Why CampusFix flagged this match:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="p-2.5 rounded bg-white border border-slate-200 text-xs flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                    40%
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-800 block">Location Signal</span>
+                    <span className="text-slate-600 text-[11px]">{potentialDuplicate.breakdown.location.reason}</span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded bg-white border border-slate-200 text-xs flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                    25%
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-800 block">Category Signal</span>
+                    <span className="text-slate-600 text-[11px]">{potentialDuplicate.breakdown.category.reason}</span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded bg-white border border-slate-200 text-xs flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                    25%
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-800 block">Semantic Signal</span>
+                    <span className="text-slate-600 text-[11px]">{potentialDuplicate.breakdown.semantic.reason}</span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded bg-white border border-slate-200 text-xs flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                    10%
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-800 block">Time Proximity</span>
+                    <span className="text-slate-600 text-[11px]">{potentialDuplicate.breakdown.time.reason}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-xs text-blue-900">
+              <strong>Transparent Policy:</strong> CampusFix never silently merges or suppresses your report. You can subscribe to the active repair work order, or file this as a separate ticket.
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t bg-slate-50/50">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowDuplicateModal(false)}
+              className="w-full sm:w-auto text-xs"
+            >
+              Back &amp; Edit Report
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCreateAnyway}
+              disabled={submitting}
+              className="w-full sm:w-auto text-xs border-slate-300"
+            >
+              {submitting ? 'Creating Ticket...' : 'Create New Report Anyway'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleFollowExistingIssue}
+              disabled={followingTicket}
+              className="w-full sm:flex-1 font-semibold text-sm gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {followingTicket ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Subscribing to Updates...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Follow Existing Ticket ({potentialDuplicate.ticket_number})
+                </>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
       ) : (
         /* STEP 2: REVIEW & EDIT AI SUGGESTIONS */
         <Card className="border-slate-200 shadow-md">
@@ -506,10 +738,15 @@ export default function StudentReportPage() {
             <Button
               type="button"
               onClick={handleSubmitTicket}
-              disabled={submitting}
+              disabled={submitting || duplicateChecking}
               className="w-full sm:flex-1 font-semibold text-sm gap-2"
             >
-              {submitting ? (
+              {duplicateChecking ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Checking for Duplicates...
+                </>
+              ) : submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Creating Ticket...

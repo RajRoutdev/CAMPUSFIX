@@ -11,12 +11,32 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
     }
 
-    // 1. In-memory issues scoped by user role & ownership
+    const { searchParams } = new URL(req.url);
+    const statusFilter = searchParams.get('status');
+    const categoryFilter = searchParams.get('category');
+    const departmentFilter = searchParams.get('department_id');
+    const assignedFilter = searchParams.get('assigned_to');
+    const searchQuery = searchParams.get('search')?.toLowerCase().trim();
+
+    // 1. In-memory issues scoped by user role & tenant
     let memoryIssues = getInMemoryIssues();
+
+    // Tenant / College isolation
+    if (profile.college_id) {
+      memoryIssues = memoryIssues.filter((i) => !i.college_id || i.college_id === profile.college_id);
+    }
+
+    // Role-specific scoping
     if (profile.role === 'student') {
       memoryIssues = memoryIssues.filter((i) => i.reported_by === userId);
-    } else if (profile.college_id) {
-      memoryIssues = memoryIssues.filter((i) => i.college_id === profile.college_id);
+    } else if (profile.role === 'staff') {
+      // Staff see assigned issues or department issues
+      memoryIssues = memoryIssues.filter(
+        (i) =>
+          i.assigned_to === userId ||
+          (profile.department_id && i.department_id === profile.department_id) ||
+          !i.assigned_to
+      );
     }
 
     // 2. Try Supabase if configured
@@ -27,6 +47,9 @@ export async function GET(req: NextRequest) {
         .select(`
           *,
           location:locations(*),
+          department:departments(*),
+          reporter:profiles!reported_by(*),
+          assignee:profiles!assigned_to(*),
           images:issue_images(*),
           activity_logs:activity_logs(*)
         `)
@@ -36,6 +59,19 @@ export async function GET(req: NextRequest) {
         query = query.eq('reported_by', userId);
       } else if (profile.college_id) {
         query = query.eq('college_id', profile.college_id);
+      }
+
+      if (statusFilter && statusFilter !== 'ALL') {
+        query = query.eq('status', statusFilter as any);
+      }
+      if (categoryFilter && categoryFilter !== 'ALL') {
+        query = query.eq('category', categoryFilter);
+      }
+      if (departmentFilter && departmentFilter !== 'ALL') {
+        query = query.eq('department_id', departmentFilter);
+      }
+      if (assignedFilter) {
+        query = query.eq('assigned_to', assignedFilter);
       }
 
       const { data, error } = await query;
@@ -48,17 +84,61 @@ export async function GET(req: NextRequest) {
             merged.push(item as IssueWithRelations);
           }
         }
-        return NextResponse.json({ issues: merged });
+        return NextResponse.json({ issues: applyFilters(merged, statusFilter, categoryFilter, departmentFilter, assignedFilter, searchQuery) });
       }
     } catch {
       // Supabase unavailable or placeholder, return scoped memory issues
     }
 
-    return NextResponse.json({ issues: memoryIssues });
+    const filteredMemoryIssues = applyFilters(
+      memoryIssues,
+      statusFilter,
+      categoryFilter,
+      departmentFilter,
+      assignedFilter,
+      searchQuery
+    );
+
+    return NextResponse.json({ issues: filteredMemoryIssues });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to fetch issues';
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+function applyFilters(
+  list: IssueWithRelations[],
+  status?: string | null,
+  category?: string | null,
+  department_id?: string | null,
+  assigned_to?: string | null,
+  search?: string | null
+): IssueWithRelations[] {
+  return list.filter((issue) => {
+    if (status && status !== 'ALL' && issue.status !== status) {
+      return false;
+    }
+    if (category && category !== 'ALL' && issue.category !== category) {
+      return false;
+    }
+    if (department_id && department_id !== 'ALL' && issue.department_id !== department_id) {
+      return false;
+    }
+    if (assigned_to && issue.assigned_to !== assigned_to) {
+      return false;
+    }
+    if (search) {
+      const matchTicket = issue.ticket_number?.toLowerCase().includes(search);
+      const matchTitle = issue.title?.toLowerCase().includes(search);
+      const matchDesc = issue.description?.toLowerCase().includes(search);
+      const matchRoom = issue.location?.room?.toLowerCase().includes(search);
+      const matchBuilding = issue.location?.building?.toLowerCase().includes(search);
+      if (!matchTicket && !matchTitle && !matchDesc && !matchRoom && !matchBuilding) {
+        return false;
+      }
+    }
+    return true;
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -78,6 +158,9 @@ export async function POST(req: NextRequest) {
     const location_id = typeof body.location_id === 'string' ? body.location_id.trim() : '';
     const image_url = typeof body.image_url === 'string' ? body.image_url.trim() : '';
     const evidence = Array.isArray(body.evidence) ? body.evidence : [];
+    const matched_issue_id = typeof body.matched_issue_id === 'string' ? body.matched_issue_id.trim() : null;
+    const match_score = typeof body.match_score === 'number' ? body.match_score : null;
+    const match_reason = typeof body.match_reason === 'string' ? body.match_reason.trim() : null;
 
     // 2. Strict Input Validation (PRD Section 9 mandates photo and location)
     if (!title) {
@@ -126,12 +209,29 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        // Link duplicate match if user created new report after duplicate warning
+        if (matched_issue_id && match_score !== null) {
+          await supabase.from('issue_matches').insert({
+            issue_id: issue.id,
+            matched_issue_id,
+            score: match_score,
+            reason: match_reason || 'Student confirmed creation despite potential duplicate alert',
+          });
+        }
+
         // Add activity log
         await supabase.from('activity_logs').insert({
           issue_id: issue.id,
           user_id: reported_by,
           action: 'CREATED',
-          metadata: { title, category, severity, evidence },
+          metadata: {
+            title,
+            category,
+            severity,
+            evidence,
+            potential_duplicate_of: matched_issue_id,
+            match_score,
+          },
         });
 
         createdIssue = issue as IssueWithRelations;
@@ -153,6 +253,16 @@ export async function POST(req: NextRequest) {
         image_url,
         evidence,
       });
+
+      if (matched_issue_id && match_score !== null) {
+        const { addInMemoryIssueMatch } = await import('@/lib/issues/store');
+        addInMemoryIssueMatch(
+          createdIssue.id,
+          matched_issue_id,
+          match_score,
+          match_reason || 'Student confirmed creation despite potential duplicate alert'
+        );
+      }
     }
 
     return NextResponse.json({ success: true, issue: createdIssue }, { status: 201 });

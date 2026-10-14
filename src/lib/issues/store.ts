@@ -1,15 +1,269 @@
-import type { IssueWithRelations } from '@/types/models';
+import type { IssueWithRelations, IssueStatus, IssueSeverity } from '@/types/models';
 import { PREDEFINED_LOCATIONS } from '@/lib/locations/data';
 
 // In-memory fallback cache for development/demo mode when Supabase credentials are placeholders
 const memoryIssues: Map<string, IssueWithRelations> = new Map();
 let ticketCounter = 1001;
 
+// Seed initial realistic demo tickets for Apex Institute of Technology
+function seedInitialIssues() {
+  if (memoryIssues.size > 0) return;
+
+  const collegeId = '11111111-1111-1111-1111-111111111111';
+  const studentId = 'e1111111-1111-1111-1111-111111111111';
+  const staffId = 'e2222222-2222-2222-2222-222222222222';
+  const adminId = 'e3333333-3333-3333-3333-333333333333';
+  const electricalDeptId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  const plumbingDeptId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+  // Demo Issue 1: RESOLUTION_SUBMITTED (Ready for Admin Verification)
+  const id1 = 'issue-demo-1001';
+  const t1 = 'CF-1001';
+  const time1 = new Date(Date.now() - 3600 * 4000).toISOString();
+  const resTime1 = new Date(Date.now() - 1800 * 1000).toISOString();
+
+  const issue1: IssueWithRelations = {
+    id: id1,
+    ticket_number: t1,
+    college_id: collegeId,
+    reported_by: studentId,
+    title: 'Ceiling Fan Blades Wobbling in Room 204',
+    description: 'Ceiling fan in Block B Room 204 has severely misaligned blades and makes a loud rattling sound.',
+    category: 'Electrical',
+    severity: 'medium',
+    status: 'RESOLUTION_SUBMITTED',
+    department_id: electricalDeptId,
+    assigned_to: staffId,
+    location_id: PREDEFINED_LOCATIONS[0].id,
+    created_at: time1,
+    updated_at: resTime1,
+    resolved_at: null,
+    location: PREDEFINED_LOCATIONS[0],
+    department: {
+      id: electricalDeptId,
+      college_id: collegeId,
+      name: 'Electrical',
+      description: 'Power distribution, lighting, fans',
+      created_at: time1,
+    },
+    assignee: {
+      id: staffId,
+      college_id: collegeId,
+      name: 'Rajesh Kumar (Electrician)',
+      email: 'staff@campusfix.edu',
+      role: 'staff',
+      department_id: electricalDeptId,
+      created_at: time1,
+    },
+    images: [
+      {
+        id: 'img-1001-orig',
+        issue_id: id1,
+        image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&q=80',
+        image_type: 'original',
+        created_at: time1,
+      },
+      {
+        id: 'img-1001-res',
+        issue_id: id1,
+        image_url: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&q=80',
+        image_type: 'resolution',
+        created_at: resTime1,
+      },
+    ],
+    activity_logs: [
+      {
+        id: 'act-1001-1',
+        issue_id: id1,
+        user_id: studentId,
+        action: 'CREATED',
+        metadata: { title: 'Ceiling Fan Blades Wobbling in Room 204', category: 'Electrical', severity: 'medium' },
+        created_at: time1,
+      },
+      {
+        id: 'act-1001-2',
+        issue_id: id1,
+        user_id: adminId,
+        action: 'ASSIGNED',
+        metadata: { assigned_to: staffId, department: 'Electrical' },
+        created_at: new Date(Date.now() - 3000 * 1000).toISOString(),
+      },
+      {
+        id: 'act-1001-3',
+        issue_id: id1,
+        user_id: staffId,
+        action: 'STARTED_WORK',
+        metadata: { notes: 'Inspecting fan mounting and motor bracket.' },
+        created_at: new Date(Date.now() - 2500 * 1000).toISOString(),
+      },
+      {
+        id: 'act-1001-4',
+        issue_id: id1,
+        user_id: staffId,
+        action: 'RESOLUTION_SUBMITTED',
+        metadata: {
+          notes: 'Replaced bent blade bracket, balanced blades, and tightened motor anchor bolts. Fan tested operational without vibration.',
+          image_url: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&q=80',
+        },
+        created_at: resTime1,
+      },
+    ],
+  };
+
+  memoryIssues.set(id1, issue1);
+  memoryIssues.set(t1, issue1);
+
+  // Demo Issue 2: IN_PROGRESS (Staff is currently working on it)
+  const id2 = 'issue-demo-1002';
+  const t2 = 'CF-1002';
+  const time2 = new Date(Date.now() - 7200 * 1000).toISOString();
+
+  const issue2: IssueWithRelations = {
+    id: id2,
+    ticket_number: t2,
+    college_id: collegeId,
+    reported_by: studentId,
+    title: 'Exposed Wiring Near Switchboard',
+    description: 'Bare wires visible near the main switchboard in Block B Room 201.',
+    category: 'Electrical',
+    severity: 'critical',
+    status: 'IN_PROGRESS',
+    department_id: electricalDeptId,
+    assigned_to: staffId,
+    location_id: PREDEFINED_LOCATIONS[1].id,
+    created_at: time2,
+    updated_at: new Date(Date.now() - 1200 * 1000).toISOString(),
+    resolved_at: null,
+    location: PREDEFINED_LOCATIONS[1],
+    department: {
+      id: electricalDeptId,
+      college_id: collegeId,
+      name: 'Electrical',
+      description: 'Power distribution, lighting, fans',
+      created_at: time2,
+    },
+    assignee: {
+      id: staffId,
+      college_id: collegeId,
+      name: 'Rajesh Kumar (Electrician)',
+      email: 'staff@campusfix.edu',
+      role: 'staff',
+      department_id: electricalDeptId,
+      created_at: time2,
+    },
+    images: [
+      {
+        id: 'img-1002-orig',
+        issue_id: id2,
+        image_url: 'https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?w=800&q=80',
+        image_type: 'original',
+        created_at: time2,
+      },
+    ],
+    activity_logs: [
+      {
+        id: 'act-1002-1',
+        issue_id: id2,
+        user_id: studentId,
+        action: 'CREATED',
+        metadata: { title: 'Exposed Wiring Near Switchboard', category: 'Electrical', severity: 'critical' },
+        created_at: time2,
+      },
+      {
+        id: 'act-1002-2',
+        issue_id: id2,
+        user_id: adminId,
+        action: 'ASSIGNED',
+        metadata: { assigned_to: staffId },
+        created_at: new Date(Date.now() - 5000 * 1000).toISOString(),
+      },
+      {
+        id: 'act-1002-3',
+        issue_id: id2,
+        user_id: staffId,
+        action: 'STARTED_WORK',
+        metadata: { notes: 'Power circuit isolated for safety. Commencing conduit replacement.' },
+        created_at: new Date(Date.now() - 1200 * 1000).toISOString(),
+      },
+    ],
+  };
+
+  memoryIssues.set(id2, issue2);
+  memoryIssues.set(t2, issue2);
+
+  // Demo Issue 3: ASSIGNED (In staff queue awaiting Start Work)
+  const id3 = 'issue-demo-1003';
+  const t3 = 'CF-1003';
+  const time3 = new Date(Date.now() - 1800 * 1000).toISOString();
+
+  const issue3: IssueWithRelations = {
+    id: id3,
+    ticket_number: t3,
+    college_id: collegeId,
+    reported_by: studentId,
+    title: 'Water Seepage Under Central Library Washbasin',
+    description: 'Continuous water leakage from PVC drainage pipe under washbasin.',
+    category: 'Plumbing',
+    severity: 'high',
+    status: 'ASSIGNED',
+    department_id: plumbingDeptId,
+    assigned_to: null, // Unassigned in department queue
+    location_id: PREDEFINED_LOCATIONS[2].id,
+    created_at: time3,
+    updated_at: time3,
+    resolved_at: null,
+    location: PREDEFINED_LOCATIONS[2],
+    department: {
+      id: plumbingDeptId,
+      college_id: collegeId,
+      name: 'Plumbing',
+      description: 'Water supply, drainage, restroom fittings',
+      created_at: time3,
+    },
+    assignee: null,
+    images: [
+      {
+        id: 'img-1003-orig',
+        issue_id: id3,
+        image_url: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80',
+        image_type: 'original',
+        created_at: time3,
+      },
+    ],
+    activity_logs: [
+      {
+        id: 'act-1003-1',
+        issue_id: id3,
+        user_id: studentId,
+        action: 'CREATED',
+        metadata: { title: 'Water Seepage Under Central Library Washbasin', category: 'Plumbing', severity: 'high' },
+        created_at: time3,
+      },
+      {
+        id: 'act-1003-2',
+        issue_id: id3,
+        user_id: adminId,
+        action: 'ASSIGNED',
+        metadata: { department: 'Plumbing' },
+        created_at: time3,
+      },
+    ],
+  };
+
+  memoryIssues.set(id3, issue3);
+  memoryIssues.set(t3, issue3);
+
+  ticketCounter = 1004;
+}
+
+// Initialize seed data
+seedInitialIssues();
+
 export function saveInMemoryIssue(issueData: {
   title: string;
   description: string;
   category: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: IssueSeverity;
   location_id: string;
   department_id?: string | null;
   reported_by?: string;
@@ -74,7 +328,139 @@ export function saveInMemoryIssue(issueData: {
   return issue;
 }
 
+export function updateInMemoryIssueStatus(
+  idOrTicket: string,
+  newStatus: IssueStatus,
+  userId: string,
+  notes?: string
+): IssueWithRelations | null {
+  const issue = memoryIssues.get(idOrTicket);
+  if (!issue) return null;
+
+  const now = new Date().toISOString();
+  issue.status = newStatus;
+  issue.updated_at = now;
+
+  if (newStatus === 'CLOSED' || newStatus === 'VERIFIED') {
+    issue.resolved_at = issue.resolved_at || now;
+  }
+
+  const logAction =
+    newStatus === 'IN_PROGRESS'
+      ? 'STARTED_WORK'
+      : newStatus === 'VERIFIED'
+      ? 'VERIFIED'
+      : newStatus === 'CLOSED'
+      ? 'CLOSED'
+      : newStatus;
+
+  issue.activity_logs = issue.activity_logs || [];
+  issue.activity_logs.unshift({
+    id: `act-${Date.now()}`,
+    issue_id: issue.id,
+    user_id: userId,
+    action: logAction,
+    metadata: { status: newStatus, notes: notes || '' },
+    created_at: now,
+  });
+
+  memoryIssues.set(issue.id, issue);
+  memoryIssues.set(issue.ticket_number, issue);
+
+  return issue;
+}
+
+export function addInMemoryResolution(
+  idOrTicket: string,
+  resolutionData: {
+    notes: string;
+    image_url: string;
+    userId: string;
+  }
+): IssueWithRelations | null {
+  const issue = memoryIssues.get(idOrTicket);
+  if (!issue) return null;
+
+  const now = new Date().toISOString();
+  issue.status = 'RESOLUTION_SUBMITTED';
+  issue.updated_at = now;
+
+  // Add resolution image
+  issue.images = issue.images || [];
+  issue.images.push({
+    id: `img-res-${Date.now()}`,
+    issue_id: issue.id,
+    image_url: resolutionData.image_url,
+    image_type: 'resolution',
+    created_at: now,
+  });
+
+  // Add resolution activity log
+  issue.activity_logs = issue.activity_logs || [];
+  issue.activity_logs.unshift({
+    id: `act-res-${Date.now()}`,
+    issue_id: issue.id,
+    user_id: resolutionData.userId,
+    action: 'RESOLUTION_SUBMITTED',
+    metadata: {
+      notes: resolutionData.notes,
+      image_url: resolutionData.image_url,
+    },
+    created_at: now,
+  });
+
+  memoryIssues.set(issue.id, issue);
+  memoryIssues.set(issue.ticket_number, issue);
+
+  return issue;
+}
+
+export function assignInMemoryIssue(
+  idOrTicket: string,
+  assignmentData: {
+    assigned_to?: string | null;
+    department_id?: string | null;
+    userId: string;
+  }
+): IssueWithRelations | null {
+  const issue = memoryIssues.get(idOrTicket);
+  if (!issue) return null;
+
+  const now = new Date().toISOString();
+  if (assignmentData.assigned_to !== undefined) {
+    issue.assigned_to = assignmentData.assigned_to;
+  }
+  if (assignmentData.department_id !== undefined) {
+    issue.department_id = assignmentData.department_id;
+  }
+
+  // Transition from NEW to ASSIGNED if needed
+  if (issue.status === 'NEW') {
+    issue.status = 'ASSIGNED';
+  }
+  issue.updated_at = now;
+
+  issue.activity_logs = issue.activity_logs || [];
+  issue.activity_logs.unshift({
+    id: `act-assign-${Date.now()}`,
+    issue_id: issue.id,
+    user_id: assignmentData.userId,
+    action: 'ASSIGNED',
+    metadata: {
+      assigned_to: assignmentData.assigned_to,
+      department_id: assignmentData.department_id,
+    },
+    created_at: now,
+  });
+
+  memoryIssues.set(issue.id, issue);
+  memoryIssues.set(issue.ticket_number, issue);
+
+  return issue;
+}
+
 export function getInMemoryIssues(): IssueWithRelations[] {
+  seedInitialIssues();
   const seen = new Set<string>();
   const list: IssueWithRelations[] = [];
 
@@ -89,5 +475,68 @@ export function getInMemoryIssues(): IssueWithRelations[] {
 }
 
 export function getInMemoryIssueById(id: string): IssueWithRelations | null {
+  seedInitialIssues();
   return memoryIssues.get(id) || null;
+}
+
+// In-memory issue matches storage
+interface MemoryMatch {
+  id: string;
+  issue_id: string;
+  matched_issue_id: string;
+  score: number;
+  reason: string;
+  created_at: string;
+}
+
+const memoryMatches: MemoryMatch[] = [];
+
+export function addInMemoryIssueMatch(
+  issueId: string,
+  matchedIssueId: string,
+  score: number,
+  reason: string
+): MemoryMatch {
+  const match: MemoryMatch = {
+    id: `match-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    issue_id: issueId,
+    matched_issue_id: matchedIssueId,
+    score,
+    reason,
+    created_at: new Date().toISOString(),
+  };
+  memoryMatches.push(match);
+  return match;
+}
+
+export function getInMemoryIssueMatches(issueId: string): MemoryMatch[] {
+  return memoryMatches.filter(
+    (m) => m.issue_id === issueId || m.matched_issue_id === issueId
+  );
+}
+
+export function addInMemoryFollow(
+  issueIdOrTicket: string,
+  userId: string
+): IssueWithRelations | null {
+  const issue = getInMemoryIssueById(issueIdOrTicket);
+  if (!issue) return null;
+
+  const now = new Date().toISOString();
+  issue.activity_logs = issue.activity_logs || [];
+  issue.activity_logs.unshift({
+    id: `act-sub-${Date.now()}`,
+    issue_id: issue.id,
+    user_id: userId,
+    action: 'SUBSCRIBED',
+    metadata: {
+      user_id: userId,
+      note: 'Student subscribed to follow resolution updates to avoid duplicate ticket clutter',
+    },
+    created_at: now,
+  });
+
+  memoryIssues.set(issue.id, issue);
+  memoryIssues.set(issue.ticket_number, issue);
+  return issue;
 }
