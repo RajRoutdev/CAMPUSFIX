@@ -44,6 +44,10 @@ export async function analyzeCampusIssue(
   // 2. Prepare Multimodal Payload
   const { inlineData, error: imagePrepError } = extractInlineImageData(request.imageData);
 
+  if (imagePrepError && !request.description) {
+    throw new Error(`Invalid image payload: ${imagePrepError}`);
+  }
+
   const contextPrompt = buildContextPrompt(request);
 
   const contents: any[] = [
@@ -72,9 +76,10 @@ Classify the issue and return ONLY a strict JSON object with these exact fields:
 - safety_risk: boolean (true if immediate hazard to students/staff exists)
 - evidence: string[] (1 to 5 concise, observable physical facts observed in the photo or context)
 
-IMPORTANT:
-- Do NOT include markdown code blocks, backticks, conversational preamble, or internal reasoning/chain-of-thought.
-- Output MUST be pure, valid JSON conforming exactly to the requested schema.`,
+IMPORTANT GUIDELINES:
+1. If the photo is dark, blurry, distant, or ambiguous, rely on the student's description and location context to make the most reasonable facility classification. Note any ambiguity in the description or evidence (e.g. "Photo details ambiguous; on-site inspection recommended").
+2. Do NOT include markdown code blocks, backticks, conversational preamble, or internal reasoning/chain-of-thought.
+3. Output MUST be pure, valid JSON conforming exactly to the requested schema.`,
         },
       ],
     },
@@ -96,13 +101,27 @@ IMPORTANT:
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(cleanedJsonText);
-    } catch (parseErr) {
-      console.warn('[Gemini Client] Failed to parse model JSON output:', rawText);
-      throw new Error('Model returned malformed JSON');
+    } catch {
+      // Try to extract outermost JSON object if model wrapped output in conversational text
+      const extracted = extractJsonBlock(rawText);
+      if (extracted) {
+        try {
+          parsedJson = JSON.parse(extracted);
+        } catch {
+          console.warn('[Gemini Client] Failed to parse model JSON output:', rawText);
+          throw new Error('Model returned malformed JSON');
+        }
+      } else {
+        console.warn('[Gemini Client] Failed to parse model JSON output:', rawText);
+        throw new Error('Model returned malformed JSON');
+      }
     }
 
-    // 5. Schema Validation via Zod
-    const validationResult = GeminiAnalysisSchema.safeParse(parsedJson);
+    // 5. Sanitize & Normalize Raw Model Output (Casing, Coercion)
+    const sanitizedJson = sanitizeRawModelOutput(parsedJson);
+
+    // 6. Schema Validation via Zod
+    const validationResult = GeminiAnalysisSchema.safeParse(sanitizedJson);
 
     if (!validationResult.success) {
       console.warn(
@@ -112,7 +131,7 @@ IMPORTANT:
       throw new Error('Model output failed strict schema validation');
     }
 
-    // 6. Apply Deterministic Business & Safety Rules
+    // 7. Apply Deterministic Business & Safety Rules
     const controlledOutput = applyDeterministicBusinessRules(validationResult.data);
 
     return {
@@ -124,7 +143,7 @@ IMPORTANT:
     const message = err instanceof Error ? err.message : 'Unknown Gemini error';
     console.warn(`[Gemini Client] Live call failed (${message}). Falling back to diagnostics.`);
 
-    // 7. Controlled Fallback on Error (Rate limits, timeouts, schema violations)
+    // 8. Controlled Fallback on Error (Rate limits, timeouts, schema violations, network loss)
     const fallbackOutput = generateDiagnosticsFallback({
       description: request.description,
       locationText: request.locationText,
@@ -140,7 +159,8 @@ IMPORTANT:
 }
 
 /**
- * Executes fetch to Gemini REST API with AbortSignal timeout and single retry
+ * Executes fetch to Gemini REST API with AbortSignal timeout and single retry.
+ * Security: Passes API key via 'x-goog-api-key' header to avoid query parameter exposure in URLs.
  */
 async function fetchGeminiWithRetry(
   apiKey: string,
@@ -156,10 +176,11 @@ async function fetchGeminiWithRetry(
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     try {
-      const response = await fetch(`${GEMINI_API_URL}?key=${encodeURIComponent(apiKey)}`, {
+      const response = await fetch(GEMINI_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey, // Secure header-based authentication
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
@@ -276,4 +297,64 @@ function cleanModelOutput(text: string): string {
     cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
   }
   return cleaned.trim();
+}
+
+/**
+ * Extracts outermost JSON object if model wrapped output in conversational text
+ */
+function extractJsonBlock(text: string): string | null {
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return text.substring(firstBrace, lastBrace + 1);
+  }
+  return null;
+}
+
+/**
+ * Sanitizes and coerces minor LLM formatting quirks (casing, string booleans)
+ */
+function sanitizeRawModelOutput(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+
+  const sanitized = { ...data };
+
+  // 1. Coerce severity to lowercase
+  if (typeof sanitized.severity === 'string') {
+    sanitized.severity = sanitized.severity.toLowerCase();
+  }
+
+  // 2. Coerce safety_risk boolean
+  if (typeof sanitized.safety_risk === 'string') {
+    sanitized.safety_risk = sanitized.safety_risk.toLowerCase() === 'true';
+  }
+
+  // 3. Normalize category to canonical casing
+  const VALID_CATEGORIES = [
+    'Electrical',
+    'Plumbing',
+    'Furniture',
+    'Cleanliness',
+    'Internet/Network',
+    'Classroom Equipment',
+    'Security',
+    'Civil/Infrastructure',
+    'Other',
+  ];
+
+  if (typeof sanitized.category === 'string') {
+    const matched = VALID_CATEGORIES.find(
+      (c) => c.toLowerCase() === sanitized.category.toLowerCase()
+    );
+    if (matched) {
+      sanitized.category = matched;
+    }
+  }
+
+  // 4. Ensure evidence is an array
+  if (typeof sanitized.evidence === 'string') {
+    sanitized.evidence = [sanitized.evidence];
+  }
+
+  return sanitized;
 }
