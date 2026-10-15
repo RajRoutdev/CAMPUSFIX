@@ -197,7 +197,8 @@ export default function StudentDashboardPage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-busy="true" aria-label="Loading your tickets...">
+            <span className="sr-only">Loading your tickets...</span>
             {[1, 2, 3, 4].map((n) => (
               <Card key={n} className="border-slate-200 animate-pulse p-5 space-y-3">
                 <div className="flex justify-between items-center">

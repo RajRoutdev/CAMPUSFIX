@@ -663,12 +663,12 @@ export default function StudentReportPage() {
           </CardHeader>
 
           <CardContent className="space-y-6 pt-6">
-            {/* Transparent Fallback Notice if live Gemini is offline */}
+            {/* Automated Diagnostics Notice if live Gemini is offline */}
             {analysisResult.is_fallback && (
-              <div className="p-3 rounded-lg bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start gap-2.5 shadow-2xs">
+                <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold">Demo Diagnostics Active:</span> Live Gemini key is unconfigured. Deterministic fallback generated these suggestions. All fields remain fully editable below.
+                  <span className="font-semibold text-slate-900">Automated Facility Diagnostics:</span> Suggested classification generated from report context. All fields remain fully editable below.
                 </div>
               </div>
             )}

@@ -77,10 +77,10 @@ export default function HomePage() {
   return (
     <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-12 sm:space-y-16">
       {/* Hero Section */}
-      <section className="text-center space-y-4 sm:space-y-5 max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold shadow-2xs">
-          <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
-          <span>Hackathon MVP Live &bull; Demo Ready</span>
+      <section className="text-center space-y-5 max-w-3xl mx-auto pt-4">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Campus Facility Operations &bull; Intelligent Issue Resolution</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
@@ -96,15 +96,15 @@ export default function HomePage() {
           accountable technician workflows, verified resolution evidence, and deterministic facility intelligence.
         </p>
 
-        <div className="pt-2 flex flex-wrap gap-3 justify-center">
+        <div className="pt-3 flex flex-wrap gap-3.5 justify-center">
           <Link href="/student/report">
-            <Button size="lg" className="font-bold text-sm gap-2 h-11 px-6 bg-primary hover:bg-primary/95 text-white shadow-sm">
+            <Button size="lg" className="font-bold text-sm gap-2 h-11 px-6 bg-primary hover:bg-primary/95 text-white shadow-sm transition-all hover:shadow">
               <Camera className="w-4 h-4" />
               Report Issue Now
             </Button>
           </Link>
           <Link href="/admin/analytics">
-            <Button variant="outline" size="lg" className="font-semibold text-sm gap-2 h-11 px-6 border-slate-300 text-slate-700 hover:bg-slate-50">
+            <Button variant="outline" size="lg" className="font-semibold text-sm gap-2 h-11 px-6 border-slate-300 text-slate-700 hover:bg-slate-50 transition-all">
               <BarChart3 className="w-4 h-4 text-primary" />
               View Campus Intelligence
             </Button>
@@ -118,8 +118,8 @@ export default function HomePage() {
           <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Role-Based Portals
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Select a test role below to experience the end-to-end workflow from each perspective.
+          <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+            Dedicated operational portals engineered for students, field maintenance technicians, and institutional facility administrators.
           </p>
         </div>
 
@@ -143,14 +143,20 @@ export default function HomePage() {
               return '/admin/login';
             };
 
+            const getSubtitle = () => {
+              if (acc.role === 'student') return 'Students & Faculty Members';
+              if (acc.role === 'staff') return 'Technician & Field Operations';
+              return 'Facilities & Campus Administration';
+            };
+
             return (
               <Card
                 key={acc.role}
-                className="flex flex-col justify-between hover:shadow-lg transition-all duration-200 border-slate-200 bg-white"
+                className="flex flex-col justify-between hover:shadow-lg transition-all duration-200 border-slate-200/90 bg-white group hover:border-slate-300"
               >
                 <CardHeader className="p-6 pb-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-slate-100 shadow-2xs">
+                    <div className="p-2.5 rounded-xl bg-slate-100 group-hover:bg-slate-200/70 transition-colors shadow-2xs">
                       {getIcon()}
                     </div>
                     <Badge variant={acc.role === 'student' ? 'info' : acc.role === 'staff' ? 'warning' : 'destructive'} className="font-semibold text-xs">
@@ -158,8 +164,8 @@ export default function HomePage() {
                     </Badge>
                   </div>
                   <CardTitle className="text-xl font-bold text-slate-900">{acc.label}</CardTitle>
-                  <CardDescription className="text-xs font-mono text-slate-400">
-                    {acc.email}
+                  <CardDescription className="text-xs font-medium text-slate-500">
+                    {getSubtitle()}
                   </CardDescription>
                 </CardHeader>
 
@@ -168,17 +174,15 @@ export default function HomePage() {
                     {acc.description}
                   </p>
 
-                  <div className="pt-2 flex gap-2">
-                    <Link href={getLoginHref()} className="w-full">
-                      <Button variant="outline" className="w-full text-xs font-medium border-slate-200 hover:bg-slate-50">
-                        Sign In as {acc.label.split(' ')[0]}
-                      </Button>
-                    </Link>
-                    <Link href={getHref()} className="w-full">
-                      <Button variant="default" className="w-full text-xs font-semibold gap-1 bg-slate-900 hover:bg-slate-800 text-white">
+                  <div className="pt-2 space-y-2">
+                    <Link href={getHref()} className="block w-full">
+                      <Button variant="default" className="w-full text-xs font-semibold gap-1.5 bg-slate-900 hover:bg-slate-800 text-white shadow-xs">
                         Open Portal
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
+                    </Link>
+                    <Link href={getLoginHref()} className="block text-center text-[11px] text-slate-500 hover:text-slate-900 font-medium transition-colors">
+                      Sign in directly &rarr;
                     </Link>
                   </div>
                 </CardContent>
@@ -229,7 +233,7 @@ export default function HomePage() {
             <h3 className="text-lg font-bold text-slate-900">Architecture &amp; Engineering Guardrails</h3>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Built strictly to hackathon standards with robust isolation, strict security, and deterministic reliability.
+            Engineered with multi-tenant campus isolation, strict row-level security, and deterministic reliability.
           </p>
         </div>
 

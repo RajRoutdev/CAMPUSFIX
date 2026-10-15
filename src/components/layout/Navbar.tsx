@@ -113,51 +113,65 @@ export function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-2" aria-label="Main Navigation">
-          <Link href="/student/dashboard">
-            <Button
-              variant={pathname.startsWith('/student') ? 'default' : 'ghost'}
-              size="sm"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <GraduationCap className="w-3.5 h-3.5" />
-              Student
-            </Button>
-          </Link>
-          <Link href="/staff/dashboard">
-            <Button
-              variant={pathname.startsWith('/staff') ? 'default' : 'ghost'}
-              size="sm"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              Staff
-            </Button>
-          </Link>
-          <Link href="/admin/dashboard">
-            <Button
-              variant={pathname === '/admin/dashboard' || pathname.startsWith('/admin/issues') ? 'default' : 'ghost'}
-              size="sm"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Admin
-            </Button>
-          </Link>
+          <div className="bg-slate-100/90 p-1 rounded-xl border border-slate-200/70 inline-flex items-center gap-1 shadow-2xs">
+            <Link href="/student/dashboard">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-8 px-3 text-xs rounded-lg transition-all ${
+                  pathname.startsWith('/student')
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                Student
+              </Button>
+            </Link>
+            <Link href="/staff/dashboard">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-8 px-3 text-xs rounded-lg transition-all ${
+                  pathname.startsWith('/staff')
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
+                }`}
+              >
+                <Wrench className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                Staff
+              </Button>
+            </Link>
+            <Link href="/admin/dashboard">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-8 px-3 text-xs rounded-lg transition-all ${
+                  pathname === '/admin/dashboard' || pathname.startsWith('/admin/issues')
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
+                Admin
+              </Button>
+            </Link>
 
-          <Link href="/admin/analytics">
-            <Button
-              variant={pathname.startsWith('/admin/analytics') ? 'default' : 'ghost'}
-              size="sm"
-              className={`text-xs font-semibold gap-1.5 ${
-                pathname.startsWith('/admin/analytics')
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'text-blue-700 hover:text-blue-800 hover:bg-blue-50'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              Intelligence
-            </Button>
-          </Link>
+            <Link href="/admin/analytics">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-8 px-3 text-xs rounded-lg transition-all ${
+                  pathname.startsWith('/admin/analytics')
+                    ? 'bg-blue-600 text-white shadow-2xs font-bold hover:bg-blue-600'
+                    : 'text-blue-700 hover:text-blue-900 hover:bg-blue-50/70 font-semibold'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                Intelligence
+              </Button>
+            </Link>
+          </div>
 
           <div className="h-4 w-px bg-slate-200 mx-1" aria-hidden="true" />
 
@@ -166,7 +180,7 @@ export function Navbar() {
               variant="outline"
               size="sm"
               onClick={handleLogout}
-              className="gap-1.5 text-xs text-slate-600 hover:text-rose-600 hover:border-rose-200 transition-colors"
+              className="h-8 gap-1.5 text-xs text-slate-600 hover:text-rose-600 hover:border-rose-200 border-slate-200 transition-colors shadow-2xs"
               aria-label="Sign out of current account"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -174,7 +188,7 @@ export function Navbar() {
             </Button>
           ) : (
             <Link href="/login">
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs font-medium">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-semibold border-slate-200 shadow-2xs">
                 <LogIn className="w-3.5 h-3.5" />
                 Sign In
               </Button>
@@ -187,7 +201,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileMenuOpen}
           >
@@ -198,16 +212,16 @@ export function Navbar() {
 
       {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b bg-white px-4 py-3 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-2 pt-1">
-            Role Portals
+        <div className="md:hidden border-b bg-white/98 backdrop-blur px-4 py-4 space-y-3 shadow-lg animate-in slide-in-from-top duration-200">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+            Campus Portals
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Link href="/student/dashboard" onClick={() => setMobileMenuOpen(false)}>
               <Button
                 variant={pathname.startsWith('/student') ? 'default' : 'outline'}
                 size="sm"
-                className="w-full justify-start text-xs font-medium gap-2"
+                className="w-full justify-start text-xs font-semibold gap-2 h-9 border-slate-200"
               >
                 <GraduationCap className="w-4 h-4 text-blue-500" />
                 Student
@@ -217,7 +231,7 @@ export function Navbar() {
               <Button
                 variant={pathname.startsWith('/staff') ? 'default' : 'outline'}
                 size="sm"
-                className="w-full justify-start text-xs font-medium gap-2"
+                className="w-full justify-start text-xs font-semibold gap-2 h-9 border-slate-200"
               >
                 <Wrench className="w-4 h-4 text-amber-500" />
                 Staff
@@ -227,7 +241,7 @@ export function Navbar() {
               <Button
                 variant={pathname === '/admin/dashboard' || pathname.startsWith('/admin/issues') ? 'default' : 'outline'}
                 size="sm"
-                className="w-full justify-start text-xs font-medium gap-2"
+                className="w-full justify-start text-xs font-semibold gap-2 h-9 border-slate-200"
               >
                 <ShieldCheck className="w-4 h-4 text-rose-500" />
                 Admin
@@ -237,7 +251,7 @@ export function Navbar() {
               <Button
                 variant={pathname.startsWith('/admin/analytics') ? 'default' : 'outline'}
                 size="sm"
-                className="w-full justify-start text-xs font-medium gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                className="w-full justify-start text-xs font-semibold gap-2 h-9 border-blue-200 text-blue-700 hover:bg-blue-50"
               >
                 <BarChart3 className="w-4 h-4 text-blue-600" />
                 Analytics
@@ -245,11 +259,11 @@ export function Navbar() {
             </Link>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
             <Link
               href="/student/report"
               onClick={() => setMobileMenuOpen(false)}
-              className="text-xs font-semibold text-primary flex items-center gap-1 p-2 hover:bg-blue-50 rounded"
+              className="text-xs font-semibold text-primary flex items-center gap-1.5 py-1.5 px-2 hover:bg-blue-50 rounded-lg transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Report Issue Now
@@ -260,14 +274,14 @@ export function Navbar() {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-xs text-rose-600 hover:bg-rose-50 gap-1.5"
+                className="text-xs text-rose-600 hover:bg-rose-50 gap-1.5 h-8"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Sign Out
               </Button>
             ) : (
               <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="outline" size="sm" className="text-xs gap-1.5">
+                <Button variant="outline" size="sm" className="text-xs gap-1.5 h-8 font-semibold">
                   <LogIn className="w-3.5 h-3.5" />
                   Sign In
                 </Button>

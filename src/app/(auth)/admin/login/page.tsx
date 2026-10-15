@@ -131,7 +131,7 @@ function AdminLoginForm() {
             </p>
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full text-sm mt-2 bg-rose-600 hover:bg-rose-700">
+          <Button type="submit" disabled={loading} className="w-full text-sm mt-3 h-10 font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-xs">
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -145,30 +145,14 @@ function AdminLoginForm() {
             )}
           </Button>
         </form>
-
-        <div className="text-center pt-2 border-t">
-          <p className="text-xs text-slate-500 mb-2">Demo Credentials</p>
-          <button
-            type="button"
-            onClick={() => {
-              setEmail('admin@campusfix.edu');
-              setPassword('Password123!');
-              setAccessCode('ADMIN-2024');
-              setError(null);
-            }}
-            className="text-xs text-rose-600 hover:underline"
-          >
-            Use demo admin account & code
-          </button>
-        </div>
       </CardContent>
       <CardFooter className="flex flex-col text-center text-xs text-slate-500 space-y-1 border-t bg-slate-50/50 pt-4">
-        <div className="flex items-center gap-1.5">
-          <ShieldCheck className="w-3 h-3 text-rose-600" />
-          Security code verified server-side
+        <div className="flex items-center gap-1.5 font-medium text-slate-600">
+          <ShieldCheck className="w-3.5 h-3.5 text-rose-600" />
+          Apex Institute of Technology &bull; Campus Administration
         </div>
         <div className="text-[11px] text-slate-400">
-          Role verified from database — public registration is disabled
+          Institutional access only — public registration is disabled
         </div>
       </CardFooter>
     </Card>

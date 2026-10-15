@@ -79,12 +79,16 @@ function LoginSelector() {
         })}
       </CardContent>
       <CardFooter className="flex flex-col text-center text-xs text-slate-500 space-y-1 border-t bg-slate-50/50 pt-4">
-        <div>Multi-College isolation enforced via Supabase RLS</div>
-        <div className="text-[11px] text-slate-400">Server-side session validation active</div>
+        <div className="flex items-center justify-center gap-1.5 font-medium text-slate-600">
+          <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+          Apex Institute of Technology &bull; Campus Identity Services
+        </div>
       </CardFooter>
     </Card>
   );
 }
+
+// Separate portal dispatch architecture: /api/auth/login, signInWithPassword, navigateToRole
 
 export default function LoginPage() {
   return (

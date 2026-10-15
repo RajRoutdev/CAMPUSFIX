@@ -64,7 +64,7 @@ function StudentIssueDetailContent() {
     return (
       <div className="container max-w-4xl mx-auto px-4 py-20 text-center flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-slate-500 font-medium">Loading ticket details &amp; repair history...</p>
+        <p className="text-sm text-slate-500 font-medium">Loading ticket details...</p>
       </div>
     );
   }
