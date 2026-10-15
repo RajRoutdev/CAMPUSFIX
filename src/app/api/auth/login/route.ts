@@ -102,6 +102,15 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
     });
 
+    // Client-side UI role indicator (non-sensitive role for instant navigation scoping)
+    cookieStore.set('campusfix_role', trustedRole, {
+      httpOnly: false,
+      path: '/',
+      maxAge: 60 * 60 * 24,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
     return NextResponse.json({
       success: true,
       role: trustedRole,

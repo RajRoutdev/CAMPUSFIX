@@ -16,12 +16,15 @@ import {
   Check,
   Building,
 } from 'lucide-react';
+import { cookies } from 'next/headers';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DEMO_ACCOUNTS } from '@/lib/auth/demo-accounts';
 
 export default function HomePage() {
+  const cookieStore = cookies();
+  const activeRole = cookieStore.get('campusfix_role')?.value as 'student' | 'staff' | 'admin' | undefined;
   const workflowSteps = [
     {
       num: '01',
@@ -123,8 +126,26 @@ export default function HomePage() {
           </p>
         </div>
 
+        {activeRole && (
+          <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+              <span>Active Session: Logged in as <strong>{activeRole.toUpperCase()}</strong>. Cross-role portal navigation is restricted.</span>
+            </div>
+            <Link href={activeRole === 'student' ? '/student/dashboard' : activeRole === 'staff' ? '/staff/dashboard' : '/admin/dashboard'}>
+              <Button size="sm" className="h-7 text-xs font-semibold gap-1 bg-primary text-white">
+                Go to My Portal
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+            </Link>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {DEMO_ACCOUNTS.map((acc) => {
+            const isCurrentRole = activeRole === acc.role;
+            const isRestricted = !!activeRole && !isCurrentRole;
+
             const getIcon = () => {
               if (acc.role === 'student') return <GraduationCap className="w-6 h-6 text-blue-600" />;
               if (acc.role === 'staff') return <Wrench className="w-6 h-6 text-amber-600" />;
@@ -152,16 +173,32 @@ export default function HomePage() {
             return (
               <Card
                 key={acc.role}
-                className="flex flex-col justify-between hover:shadow-lg transition-all duration-200 border-slate-200/90 bg-white group hover:border-slate-300"
+                className={`flex flex-col justify-between transition-all duration-200 bg-white group ${
+                  isCurrentRole
+                    ? 'border-primary/80 ring-2 ring-primary/20 bg-blue-50/10 shadow-md'
+                    : isRestricted
+                    ? 'opacity-70 border-slate-200 bg-slate-50/40 hover:opacity-90'
+                    : 'border-slate-200/90 hover:shadow-lg hover:border-slate-300'
+                }`}
               >
                 <CardHeader className="p-6 pb-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="p-2.5 rounded-xl bg-slate-100 group-hover:bg-slate-200/70 transition-colors shadow-2xs">
                       {getIcon()}
                     </div>
-                    <Badge variant={acc.role === 'student' ? 'info' : acc.role === 'staff' ? 'warning' : 'destructive'} className="font-semibold text-xs">
-                      {acc.label}
-                    </Badge>
+                    {isCurrentRole ? (
+                      <Badge variant="info" className="bg-primary text-white font-semibold text-xs">
+                        Active Portal
+                      </Badge>
+                    ) : isRestricted ? (
+                      <Badge variant="outline" className="text-slate-400 border-slate-200 text-xs">
+                        Restricted
+                      </Badge>
+                    ) : (
+                      <Badge variant={acc.role === 'student' ? 'info' : acc.role === 'staff' ? 'warning' : 'destructive'} className="font-semibold text-xs">
+                        {acc.label}
+                      </Badge>
+                    )}
                   </div>
                   <CardTitle className="text-xl font-bold text-slate-900">{acc.label}</CardTitle>
                   <CardDescription className="text-xs font-medium text-slate-500">
@@ -175,15 +212,33 @@ export default function HomePage() {
                   </p>
 
                   <div className="pt-2 space-y-2">
-                    <Link href={getHref()} className="block w-full">
-                      <Button variant="default" className="w-full text-xs font-semibold gap-1.5 bg-slate-900 hover:bg-slate-800 text-white shadow-xs">
-                        Open Portal
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Button>
-                    </Link>
-                    <Link href={getLoginHref()} className="block text-center text-[11px] text-slate-500 hover:text-slate-900 font-medium transition-colors">
-                      Sign in directly &rarr;
-                    </Link>
+                    {isRestricted ? (
+                      <Link href={activeRole === 'student' ? '/student/dashboard' : activeRole === 'staff' ? '/staff/dashboard' : '/admin/dashboard'} className="block w-full">
+                        <Button variant="outline" className="w-full text-xs font-medium text-slate-500 border-slate-200 hover:bg-slate-100 gap-1.5">
+                          <Lock className="w-3.5 h-3.5" />
+                          Restricted &bull; {activeRole.toUpperCase()} Active
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link href={getHref()} className="block w-full">
+                        <Button
+                          variant="default"
+                          className={`w-full text-xs font-semibold gap-1.5 shadow-xs ${
+                            isCurrentRole
+                              ? 'bg-primary hover:bg-primary/95 text-white'
+                              : 'bg-slate-900 hover:bg-slate-800 text-white'
+                          }`}
+                        >
+                          Open Portal
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </Link>
+                    )}
+                    {!activeRole && (
+                      <Link href={getLoginHref()} className="block text-center text-[11px] text-slate-500 hover:text-slate-900 font-medium transition-colors">
+                        Sign in directly &rarr;
+                      </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>

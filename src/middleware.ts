@@ -144,9 +144,9 @@ export async function middleware(request: NextRequest) {
     if (userRole === 'student') {
       return NextResponse.redirect(new URL('/student/dashboard', request.url));
     }
-    if (userRole === 'admin') {
-      // Admins can also view staff portal (they have higher privileges)
-      return response;
+    if (userRole !== 'staff') {
+      // Strict role isolation: Admin users are contained to the admin portal
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     }
     return response;
   }
