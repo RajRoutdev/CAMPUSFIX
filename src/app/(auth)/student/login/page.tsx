@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { GraduationCap, Mail, Lock, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+import { GraduationCap, Mail, Lock, ArrowRight, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ function StudentLoginForm() {
 
   const [email, setEmail] = useState('student@campusfix.edu');
   const [password, setPassword] = useState('Password123!');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,18 +95,51 @@ function StudentLoginForm() {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="student-password" className="text-xs">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="student-password" className="text-xs">Password</Label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <>
+                    <EyeOff className="w-3 h-3 text-slate-400" />
+                    <span>Hide</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-3 h-3 text-slate-400" />
+                    <span>Show</span>
+                  </>
+                )}
+              </button>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <Input
                 id="student-password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-9 text-sm"
+                className="pl-9 pr-10 text-sm"
                 placeholder="Enter your password"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded p-0.5"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
             </div>
           </div>
 
