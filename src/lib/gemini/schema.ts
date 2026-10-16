@@ -45,7 +45,7 @@ export type GeminiAnalysisOutput = z.infer<typeof GeminiAnalysisSchema>;
 
 export interface AnalyzeResult extends GeminiAnalysisOutput {
   is_fallback: boolean;
-  provider: 'gemini-1.5-flash' | 'fallback-diagnostics';
+  provider: 'gemini-1.5-flash' | 'gemini-2.5-flash' | 'gemini-flash-latest' | 'fallback-diagnostics' | string;
 }
 
 export interface AnalyzeApiRequest {

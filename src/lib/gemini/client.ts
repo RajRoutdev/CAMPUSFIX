@@ -10,6 +10,12 @@ import { generateDiagnosticsFallback } from './fallback';
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
+const CANDIDATE_GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-flash-latest',
+  'gemini-1.5-flash',
+];
+
 /**
  * Server-side Gemini Multimodal Analyzer.
  * Strictly server-side: secrets are never passed to the browser.
@@ -92,7 +98,7 @@ IMPORTANT GUIDELINES:
 
   // 3. Execute Request with Timeout and Retry Behavior
   try {
-    const liveResponse = await fetchGeminiWithRetry(apiKey, payload, 2);
+    const { data: liveResponse, model: usedModel } = await fetchGeminiWithRetry(apiKey, payload, 2);
 
     // 4. Clean and Parse JSON Output
     const rawText = liveResponse?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -137,7 +143,7 @@ IMPORTANT GUIDELINES:
     return {
       ...controlledOutput,
       is_fallback: false,
-      provider: 'gemini-1.5-flash',
+      provider: usedModel || 'gemini-1.5-flash',
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown Gemini error';
@@ -166,49 +172,58 @@ async function fetchGeminiWithRetry(
   apiKey: string,
   payload: unknown,
   maxAttempts = 2
-): Promise<any> {
-  let attempt = 0;
+): Promise<{ data: any; model: string }> {
   let lastError: Error | null = null;
 
-  while (attempt < maxAttempts) {
-    attempt++;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  for (const model of CANDIDATE_GEMINI_MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    let attempt = 0;
 
-    try {
-      const response = await fetch(GEMINI_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey, // Secure header-based authentication
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
+    while (attempt < maxAttempts) {
+      attempt++;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-      clearTimeout(timeoutId);
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey, // Secure header-based authentication
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
 
-      if (!response.ok) {
-        const errorBody = await response.text().catch(() => '');
-        // Handle rate limiting (429) or transient server errors (500, 503)
-        if ((response.status === 429 || response.status >= 500) && attempt < maxAttempts) {
-          console.warn(`[Gemini Client] HTTP ${response.status}. Retrying attempt ${attempt + 1}...`);
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          continue;
+        clearTimeout(timeoutId);
+
+        if (response.status === 404) {
+          // Model endpoint not found in this API project, try next candidate model
+          break;
         }
-        throw new Error(`Gemini API HTTP ${response.status}: ${errorBody.slice(0, 150)}`);
-      }
 
-      const data = await response.json();
-      return data;
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      lastError = err;
-      if (err.name === 'AbortError') {
-        throw new Error('Gemini API request timed out after 15 seconds');
-      }
-      if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (!response.ok) {
+          const errorBody = await response.text().catch(() => '');
+          // Handle rate limiting (429) or transient server errors (500, 503)
+          if ((response.status === 429 || response.status >= 500) && attempt < maxAttempts) {
+            console.warn(`[Gemini Client] HTTP ${response.status} for ${model}. Retrying attempt ${attempt + 1}...`);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            continue;
+          }
+          throw new Error(`Gemini API HTTP ${response.status}: ${errorBody.slice(0, 150)}`);
+        }
+
+        const data = await response.json();
+        return { data, model };
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        lastError = err;
+        if (err.name === 'AbortError') {
+          throw new Error('Gemini API request timed out after 15 seconds');
+        }
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
       }
     }
   }

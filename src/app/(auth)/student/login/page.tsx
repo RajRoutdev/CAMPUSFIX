@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { GraduationCap, Mail, Lock, ArrowRight, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -157,6 +158,15 @@ function StudentLoginForm() {
             )}
           </Button>
         </form>
+
+        <div className="text-center pt-2">
+          <p className="text-xs text-slate-500">
+            Don&apos;t have an account?{' '}
+            <Link href="/student/register" className="text-primary font-semibold hover:underline">
+              Sign up as a Student
+            </Link>
+          </p>
+        </div>
       </CardContent>
       <CardFooter className="flex flex-col text-center text-xs text-slate-500 space-y-1 border-t bg-slate-50/50 pt-4">
         <div className="flex items-center gap-1.5 font-medium text-slate-600">

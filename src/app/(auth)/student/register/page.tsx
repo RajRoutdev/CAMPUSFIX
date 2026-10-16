@@ -1,0 +1,219 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { GraduationCap, Mail, Lock, User, ArrowRight, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+export default function StudentRegisterPage() {
+  const router = useRouter();
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+        }),
+      });
+
+      if (res.ok) {
+        router.push('/student/dashboard');
+        return;
+      }
+
+      const failData = await res.json().catch(() => ({}));
+      setError(failData.error || 'Registration failed. Please try again.');
+      setLoading(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Registration error';
+      setError(msg);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="container max-w-md mx-auto px-4 py-12">
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="space-y-1 text-center">
+          <div className="flex justify-center mb-2">
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+              <GraduationCap className="w-6 h-6 text-blue-600" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold tracking-tight">Create Student Account</CardTitle>
+          <CardDescription className="text-xs">
+            Register with your college email to report issues and track campus resolutions
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription className="text-xs">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleRegister} className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="student-name" className="text-xs">Full Name</Label>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Input
+                  id="student-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="pl-9 text-sm"
+                  placeholder="e.g. Priya Sharma"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="student-reg-email" className="text-xs">College Email</Label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Input
+                  id="student-reg-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9 text-sm"
+                  placeholder="your-name@college.edu"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="student-reg-password" className="text-xs">Password</Label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-3 h-3 text-slate-400" />
+                      <span>Hide</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3 h-3 text-slate-400" />
+                      <span>Show</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Input
+                  id="student-reg-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-9 pr-10 text-sm"
+                  placeholder="At least 6 characters"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded p-0.5"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="student-confirm-password" className="text-xs">Confirm Password</Label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Input
+                  id="student-confirm-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-9 pr-10 text-sm"
+                  placeholder="Repeat your password"
+                  required
+                />
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full text-sm mt-3 h-10 font-semibold bg-primary hover:bg-primary/95 shadow-xs">
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  Create Student Account
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </>
+              )}
+            </Button>
+          </form>
+
+          <div className="text-center pt-2">
+            <p className="text-xs text-slate-500">
+              Already have an account?{' '}
+              <Link href="/student/login" className="text-primary font-semibold hover:underline">
+                Sign in here
+              </Link>
+            </p>
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col text-center text-xs text-slate-500 space-y-1 border-t bg-slate-50/50 pt-4">
+          <div className="flex items-center gap-1.5 font-medium text-slate-600">
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+            Apex Institute of Technology &bull; Student Identity Services
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}

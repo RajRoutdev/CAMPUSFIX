@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/auth/demo-accounts';
 import { validateAccessCode, PortalType } from '@/lib/auth/access-codes';
+import { verifyUserCredentials, registerUser } from '@/lib/auth/user-store';
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,10 +25,61 @@ export async function POST(req: NextRequest) {
       ? (portal as PortalType)
       : 'student';
 
-    // 2. Verify credentials against known demo accounts
-    const demoUser = DEMO_ACCOUNTS.find((a) => a.email.toLowerCase() === email);
+    // 2. Verify credentials against known demo accounts or registered user store
+    let activeUser: {
+      id: string;
+      email: string;
+      name: string;
+      role: 'student' | 'staff' | 'admin';
+      college_id: string;
+      department_id?: string | null;
+    } | null = null;
 
-    if (!demoUser || password !== DEMO_PASSWORD) {
+    const demoUser = DEMO_ACCOUNTS.find((a) => a.email.toLowerCase() === email);
+    if (demoUser && password === DEMO_PASSWORD) {
+      activeUser = {
+        id: demoUser.id,
+        email: demoUser.email,
+        name: demoUser.name,
+        role: demoUser.role,
+        college_id: demoUser.college_id,
+        department_id: demoUser.departmentName ? 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' : null,
+      };
+    } else {
+      const verified = verifyUserCredentials(email, password);
+      if (verified) {
+        activeUser = {
+          id: verified.id,
+          email: verified.email,
+          name: verified.name,
+          role: verified.role,
+          college_id: verified.college_id,
+          department_id: verified.department_id || null,
+        };
+      } else if (portalType === 'staff' || portalType === 'admin') {
+        // Staff/Admin access code onboarding:
+        // If an authorized staff or admin enters their credentials with the valid access code
+        const codeCheck = validateAccessCode(portalType, accessCode);
+        if (codeCheck.valid && password.length >= 6) {
+          const registered = registerUser({
+            email,
+            password,
+            name: email.split('@')[0],
+            role: portalType,
+          });
+          activeUser = {
+            id: registered.id,
+            email: registered.email,
+            name: registered.name,
+            role: registered.role,
+            college_id: registered.college_id,
+            department_id: registered.department_id || null,
+          };
+        }
+      }
+    }
+
+    if (!activeUser) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -37,7 +89,7 @@ export async function POST(req: NextRequest) {
     // 3. CRITICAL SECURITY CHECK: Verify the user's TRUSTED database role
     //    matches the portal they are trying to access.
     //    Never trust client-supplied role — use the role from DEMO_ACCOUNTS.
-    const trustedRole = demoUser.role;
+    const trustedRole = activeUser.role;
 
     if (portalType === 'admin' && trustedRole !== 'admin') {
       return NextResponse.json(
@@ -77,11 +129,11 @@ export async function POST(req: NextRequest) {
     //    The ROLE is NOT stored in the cookie — it will be resolved
     //    from trusted DEMO_ACCOUNTS in getCurrentUser().
     const sessionPayload = {
-      userId: demoUser.id,
-      email: demoUser.email,
-      name: demoUser.name,
-      college_id: demoUser.college_id,
-      department_id: demoUser.departmentName ? 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' : null,
+      userId: activeUser.id,
+      email: activeUser.email,
+      name: activeUser.name,
+      college_id: activeUser.college_id,
+      department_id: activeUser.department_id || null,
     };
 
     const cookieStore = cookies();
@@ -115,9 +167,9 @@ export async function POST(req: NextRequest) {
       success: true,
       role: trustedRole,
       user: {
-        userId: demoUser.id,
-        email: demoUser.email,
-        name: demoUser.name,
+        userId: activeUser.id,
+        email: activeUser.email,
+        name: activeUser.name,
         role: trustedRole,
       },
     });
