@@ -2,6 +2,7 @@
   "name": "campusfix",
   "version": "1.0.0",
   "description": "AI-powered campus issue reporting and resolution platform",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",

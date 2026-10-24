@@ -39,7 +39,7 @@ export default function StaffDashboardPage() {
       if (statusFilter !== 'ALL') params.set('status', statusFilter);
       if (categoryFilter !== 'ALL') params.set('category', categoryFilter);
 
-      const res = await fetch(`/api/issues?${params.toString()}`);
+      const res = await fetch(`/api/issues?${params.toString()}`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Failed to load work orders');
       }

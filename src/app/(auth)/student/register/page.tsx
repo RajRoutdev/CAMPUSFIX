@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 
 export default function StudentRegisterPage() {
   const router = useRouter();
@@ -84,6 +85,24 @@ export default function StudentRegisterPage() {
               <AlertDescription className="text-xs">{error}</AlertDescription>
             </Alert>
           )}
+
+          <GoogleSignInButton
+            label="Sign up with Google"
+            portal="student"
+            redirectTarget="/student/dashboard"
+            onError={(err) => setError(err)}
+          />
+
+          <div className="relative my-1">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-[11px] uppercase">
+              <span className="bg-white px-2 text-slate-400 font-medium tracking-wider">
+                Or register with email
+              </span>
+            </div>
+          </div>
 
           <form onSubmit={handleRegister} className="space-y-3">
             <div className="space-y-1">

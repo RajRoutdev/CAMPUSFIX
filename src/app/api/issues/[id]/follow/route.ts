@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getDatabaseClient } from '@/lib/supabase/db';
 import {
   getInMemoryIssueById,
   addInMemoryFollow,
 } from '@/lib/issues/store';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(
   req: NextRequest,
@@ -26,7 +28,7 @@ export async function POST(
     let existingIssue = getInMemoryIssueById(id);
     if (!existingIssue) {
       try {
-        const supabase = createServerSupabaseClient();
+        const supabase = getDatabaseClient();
         const isTicket = id.startsWith('CF-');
         const query = isTicket
           ? supabase.from('issues').select('*').eq('ticket_number', id).single()
@@ -56,7 +58,7 @@ export async function POST(
 
     // 4. Record follow activity in activity_logs
     try {
-      const supabase = createServerSupabaseClient();
+      const supabase = getDatabaseClient();
       await supabase.from('activity_logs').insert({
         issue_id: existingIssue.id,
         user_id: userId,

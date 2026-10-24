@@ -14,6 +14,7 @@ import {
   X,
   Sparkles,
   Building,
+  Building2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -246,6 +247,20 @@ export function Navbar() {
                   Manage Issues
                 </Button>
               </Link>
+              <Link href="/admin/campus">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-8 px-3 text-xs rounded-lg transition-all ${
+                    pathname.startsWith('/admin/campus')
+                      ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                  Campus Config
+                </Button>
+              </Link>
               <Link href="/admin/analytics">
                 <Button
                   variant="ghost"
@@ -377,6 +392,16 @@ export function Navbar() {
                   >
                     <Building className="w-4 h-4 text-slate-600" />
                     Manage Issues
+                  </Button>
+                </Link>
+                <Link href="/admin/campus" onClick={() => setMobileMenuOpen(false)}>
+                  <Button
+                    variant={pathname.startsWith('/admin/campus') ? 'default' : 'outline'}
+                    size="sm"
+                    className="w-full justify-start text-xs font-semibold gap-2 h-9 border-slate-200"
+                  >
+                    <Building2 className="w-4 h-4 text-indigo-600" />
+                    Campus Config
                   </Button>
                 </Link>
                 <Link href="/admin/analytics" onClick={() => setMobileMenuOpen(false)}>

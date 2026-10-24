@@ -43,7 +43,7 @@ function StudentIssueDetailContent() {
     async function fetchIssue() {
       if (!id) return;
       try {
-        const res = await fetch(`/api/issues/${id}`);
+        const res = await fetch(`/api/issues/${id}`, { cache: 'no-store' });
         if (!res.ok) {
           throw new Error('Ticket not found or cross-college access forbidden');
         }

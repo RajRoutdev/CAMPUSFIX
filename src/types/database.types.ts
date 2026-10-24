@@ -17,6 +17,19 @@ export type IssueStatus =
   | 'CLOSED';
 export type ImageType = 'original' | 'resolution';
 
+export type LocationType =
+  | 'classroom'
+  | 'laboratory'
+  | 'office'
+  | 'library'
+  | 'restroom'
+  | 'corridor'
+  | 'staircase'
+  | 'lift'
+  | 'parking'
+  | 'outdoor'
+  | 'other';
+
 export interface Database {
   public: {
     Tables: {
@@ -25,21 +38,74 @@ export interface Database {
           id: string;
           name: string;
           logo_url: string | null;
+          campus_name?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          is_active?: boolean;
           created_at: string;
         };
         Insert: {
           id?: string;
           name: string;
           logo_url?: string | null;
+          campus_name?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          is_active?: boolean;
           created_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
           logo_url?: string | null;
+          campus_name?: string | null;
+          address?: string | null;
+          city?: string | null;
+          state?: string | null;
+          is_active?: boolean;
           created_at?: string;
         };
         Relationships: [];
+      };
+      buildings: {
+        Row: {
+          id: string;
+          college_id: string;
+          name: string;
+          code: string;
+          total_floors: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          college_id: string;
+          name: string;
+          code: string;
+          total_floors?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          college_id?: string;
+          name?: string;
+          code?: string;
+          total_floors?: number;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "buildings_college_id_fkey";
+            columns: ["college_id"];
+            isOneToOne: false;
+            referencedRelation: "colleges";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       departments: {
         Row: {
@@ -47,6 +113,9 @@ export interface Database {
           college_id: string;
           name: string;
           description: string | null;
+          categories?: string[];
+          default_routing_rule?: string | null;
+          is_active?: boolean;
           created_at: string;
         };
         Insert: {
@@ -54,6 +123,9 @@ export interface Database {
           college_id: string;
           name: string;
           description?: string | null;
+          categories?: string[];
+          default_routing_rule?: string | null;
+          is_active?: boolean;
           created_at?: string;
         };
         Update: {
@@ -61,6 +133,9 @@ export interface Database {
           college_id?: string;
           name?: string;
           description?: string | null;
+          categories?: string[];
+          default_routing_rule?: string | null;
+          is_active?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -77,28 +152,37 @@ export interface Database {
         Row: {
           id: string;
           college_id: string;
+          building_id?: string | null;
           building: string;
           floor: string;
           room: string;
           area: string | null;
+          location_type?: LocationType;
+          is_active?: boolean;
           created_at: string;
         };
         Insert: {
           id?: string;
           college_id: string;
+          building_id?: string | null;
           building: string;
           floor: string;
           room: string;
           area?: string | null;
+          location_type?: LocationType;
+          is_active?: boolean;
           created_at?: string;
         };
         Update: {
           id?: string;
           college_id?: string;
+          building_id?: string | null;
           building?: string;
           floor?: string;
           room?: string;
           area?: string | null;
+          location_type?: LocationType;
+          is_active?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -107,6 +191,13 @@ export interface Database {
             columns: ["college_id"];
             isOneToOne: false;
             referencedRelation: "colleges";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "locations_building_id_fkey";
+            columns: ["building_id"];
+            isOneToOne: false;
+            referencedRelation: "buildings";
             referencedColumns: ["id"];
           }
         ];
@@ -119,6 +210,9 @@ export interface Database {
           email: string;
           role: UserRole;
           department_id: string | null;
+          designation?: string | null;
+          service_areas?: string[];
+          is_active?: boolean;
           created_at: string;
         };
         Insert: {
@@ -128,6 +222,9 @@ export interface Database {
           email: string;
           role: UserRole;
           department_id?: string | null;
+          designation?: string | null;
+          service_areas?: string[];
+          is_active?: boolean;
           created_at?: string;
         };
         Update: {
@@ -137,6 +234,9 @@ export interface Database {
           email?: string;
           role?: UserRole;
           department_id?: string | null;
+          designation?: string | null;
+          service_areas?: string[];
+          is_active?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -152,6 +252,59 @@ export interface Database {
             columns: ["department_id"];
             isOneToOne: false;
             referencedRelation: "departments";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      staff_invitations: {
+        Row: {
+          id: string;
+          college_id: string;
+          email: string;
+          name: string;
+          department_id: string | null;
+          designation: string | null;
+          service_areas: string[];
+          access_code: string;
+          invited_by: string | null;
+          is_used: boolean;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          college_id: string;
+          email: string;
+          name: string;
+          department_id?: string | null;
+          designation?: string | null;
+          service_areas?: string[];
+          access_code: string;
+          invited_by?: string | null;
+          is_used?: boolean;
+          expires_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          college_id?: string;
+          email?: string;
+          name?: string;
+          department_id?: string | null;
+          designation?: string | null;
+          service_areas?: string[];
+          access_code?: string;
+          invited_by?: string | null;
+          is_used?: boolean;
+          expires_at?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "staff_invitations_college_id_fkey";
+            columns: ["college_id"];
+            isOneToOne: false;
+            referencedRelation: "colleges";
             referencedColumns: ["id"];
           }
         ];

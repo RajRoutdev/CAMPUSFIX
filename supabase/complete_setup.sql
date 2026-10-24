@@ -13,31 +13,54 @@ CREATE TABLE IF NOT EXISTS public.colleges (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     logo_url TEXT,
+    campus_name TEXT,
+    address TEXT,
+    city TEXT,
+    state TEXT,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3. DEPARTMENTS TABLE
+-- 3. BUILDINGS TABLE
+CREATE TABLE IF NOT EXISTS public.buildings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL,
+    total_floors INT DEFAULT 1,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT unique_college_building_code UNIQUE (college_id, code)
+);
+
+-- 4. DEPARTMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.departments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
+    categories TEXT[] DEFAULT '{}',
+    default_routing_rule TEXT,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT unique_college_dept_name UNIQUE (college_id, name)
 );
 
--- 4. LOCATIONS TABLE
+-- 5. LOCATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.locations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE CASCADE,
+    building_id UUID REFERENCES public.buildings(id) ON DELETE SET NULL,
     building TEXT NOT NULL,
     floor TEXT NOT NULL,
     room TEXT NOT NULL,
     area TEXT,
+    location_type TEXT DEFAULT 'classroom',
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 5. PROFILES TABLE (Linked to auth.users)
+-- 6. PROFILES TABLE (Linked to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE RESTRICT,
@@ -45,6 +68,25 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     email TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('student', 'staff', 'admin')),
     department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
+    designation TEXT,
+    service_areas TEXT[] DEFAULT '{}',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 7. STAFF INVITATIONS TABLE
+CREATE TABLE IF NOT EXISTS public.staff_invitations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    college_id UUID NOT NULL REFERENCES public.colleges(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
+    designation TEXT,
+    service_areas TEXT[] DEFAULT '{}',
+    access_code TEXT NOT NULL UNIQUE,
+    invited_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    is_used BOOLEAN DEFAULT false,
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '7 days'),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -199,13 +241,36 @@ ALTER TABLE public.issues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.issue_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.issue_matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.buildings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.staff_invitations ENABLE ROW LEVEL SECURITY;
 
 -- 13. RLS POLICIES
--- Colleges & Locations: Allow select for authenticated and anon (for registration & forms)
+-- Colleges, Buildings, Departments & Locations: Allow select for authenticated and anon (for registration & forms)
 DROP POLICY IF EXISTS "colleges_select_policy" ON public.colleges;
 CREATE POLICY "colleges_select_policy" ON public.colleges
     FOR SELECT TO authenticated, anon
     USING (true);
+
+DROP POLICY IF EXISTS "buildings_select_policy" ON public.buildings;
+CREATE POLICY "buildings_select_policy" ON public.buildings
+    FOR SELECT TO authenticated, anon
+    USING (true);
+
+DROP POLICY IF EXISTS "buildings_admin_write_policy" ON public.buildings;
+CREATE POLICY "buildings_admin_write_policy" ON public.buildings
+    FOR ALL TO authenticated
+    USING (
+        college_id IN (SELECT college_id FROM public.get_current_profile())
+        AND (SELECT role FROM public.get_current_profile()) = 'admin'
+    );
+
+DROP POLICY IF EXISTS "staff_invitations_admin_policy" ON public.staff_invitations;
+CREATE POLICY "staff_invitations_admin_policy" ON public.staff_invitations
+    FOR ALL TO authenticated
+    USING (
+        college_id IN (SELECT college_id FROM public.get_current_profile())
+        AND (SELECT role FROM public.get_current_profile()) = 'admin'
+    );
 
 DROP POLICY IF EXISTS "departments_select_policy" ON public.departments;
 CREATE POLICY "departments_select_policy" ON public.departments

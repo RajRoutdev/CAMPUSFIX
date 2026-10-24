@@ -124,16 +124,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Set secure session cookie
-    //    The cookie stores userId and email for identification.
-    //    The ROLE is NOT stored in the cookie — it will be resolved
-    //    from trusted DEMO_ACCOUNTS in getCurrentUser().
+    // 5. Set secure httpOnly session cookie
     const sessionPayload = {
       userId: activeUser.id,
       email: activeUser.email,
       name: activeUser.name,
       college_id: activeUser.college_id,
       department_id: activeUser.department_id || null,
+      role: trustedRole,
     };
 
     const cookieStore = cookies();

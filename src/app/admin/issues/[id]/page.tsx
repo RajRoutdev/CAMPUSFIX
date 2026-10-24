@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { SeverityBadge } from '@/components/ui/severity-badge';
-import { IssueWithRelations } from '@/types/models';
+import { IssueWithRelations, Department, Profile } from '@/types/models';
 import { formatLocationString } from '@/lib/locations/data';
 import { DEMO_ACCOUNTS } from '@/lib/auth/demo-accounts';
 
@@ -36,17 +36,41 @@ export default function AdminIssueDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Campus configuration data
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [staffList, setStaffList] = useState<(Profile & { departmentName?: string })[]>([]);
+
   // Admin action state
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const fetchCampusData = async () => {
+    try {
+      const [deptRes, staffRes] = await Promise.all([
+        fetch('/api/campus/departments'),
+        fetch('/api/campus/staff'),
+      ]);
+      if (deptRes.ok) {
+        const dData = await deptRes.json();
+        if (Array.isArray(dData.departments)) setDepartments(dData.departments);
+      }
+      if (staffRes.ok) {
+        const sData = await staffRes.json();
+        if (Array.isArray(sData.staff)) setStaffList(sData.staff);
+      }
+    } catch {
+      // Fallback
+    }
+  };
 
   const fetchIssue = async () => {
     if (!id) return;
     try {
-      const res = await fetch(`/api/issues/${id}`);
+      const res = await fetch(`/api/issues/${id}`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Ticket not found or cross-college access forbidden');
       }
@@ -54,6 +78,9 @@ export default function AdminIssueDetailPage() {
       setIssue(data.issue);
       if (data.issue?.assigned_to) {
         setSelectedStaffId(data.issue.assigned_to);
+      }
+      if (data.issue?.department_id) {
+        setSelectedDepartmentId(data.issue.department_id);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load ticket';
@@ -65,6 +92,7 @@ export default function AdminIssueDetailPage() {
 
   useEffect(() => {
     fetchIssue();
+    fetchCampusData();
   }, [id]);
 
   // Admin Verification Action (transitions RESOLUTION_SUBMITTED -> VERIFIED)
@@ -142,15 +170,16 @@ export default function AdminIssueDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           assigned_to: selectedStaffId || null,
+          department_id: selectedDepartmentId || null,
         }),
       });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to assign staff');
+        throw new Error(errData.error || 'Failed to update department or staff assignment');
       }
 
-      setActionMessage('Technician assignment updated.');
+      setActionMessage('Department routing and staff assignment updated.');
       await fetchIssue();
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : 'Assignment update failed');
@@ -190,6 +219,7 @@ export default function AdminIssueDetailPage() {
   const resolutionImage = issue.images?.find((img) => img.image_type === 'resolution');
   const activityLogs = issue.activity_logs || [];
   const staffAccounts = DEMO_ACCOUNTS.filter((a) => a.role === 'staff');
+  const displayStaff = staffList.length > 0 ? staffList : staffAccounts;
 
   return (
     <div className="container max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -448,32 +478,55 @@ export default function AdminIssueDetailPage() {
             </Card>
           )}
 
-          {/* Assignment Panel */}
+          {/* Assignment & Department Routing Panel (Feature 7) */}
           <Card className="border-slate-200">
             <CardHeader className="p-4 pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                 <User className="w-4 h-4 text-slate-500" />
-                Staff Assignment
+                Department & Staff Routing
               </CardTitle>
               <CardDescription className="text-xs">
-                Assign ticket to a specialized technician.
+                Correct department routing or assign a technician.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 pt-2 space-y-3">
+              {/* Department Assignment / Correction */}
+              <div className="space-y-1">
+                <Label htmlFor="assigned-department" className="text-xs text-slate-600">
+                  Assigned Department
+                </Label>
+                <select
+                  id="assigned-department"
+                  aria-label="Assign department to ticket"
+                  value={selectedDepartmentId}
+                  onChange={(e) => setSelectedDepartmentId(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs shadow-sm focus:outline-none"
+                >
+                  <option value="">No Department Assigned</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Technician Assignment */}
               <div className="space-y-1">
                 <Label htmlFor="assignee" className="text-xs text-slate-600">
                   Assigned Technician
                 </Label>
                 <select
                   id="assignee"
+                  aria-label="Assign technician to ticket"
                   value={selectedStaffId}
                   onChange={(e) => setSelectedStaffId(e.target.value)}
                   className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs shadow-sm focus:outline-none"
                 >
                   <option value="">Unassigned (Department Queue)</option>
-                  {staffAccounts.map((staff) => (
+                  {displayStaff.map((staff) => (
                     <option key={staff.id} value={staff.id}>
-                      {staff.name} ({staff.departmentName || 'General Staff'})
+                      {staff.name} ({staff.departmentName || ('designation' in staff ? staff.designation : '') || 'Staff'})
                     </option>
                   ))}
                 </select>
@@ -492,7 +545,7 @@ export default function AdminIssueDetailPage() {
                     Updating...
                   </>
                 ) : (
-                  'Update Assignment'
+                  'Update Routing & Assignment'
                 )}
               </Button>
             </CardContent>

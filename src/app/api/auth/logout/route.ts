@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function POST() {
   try {
+    // 1. Revoke Supabase Auth session if active
+    try {
+      const supabase = createServerSupabaseClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Supabase client may be unconfigured in dev/offline mode
+    }
+
+    // 2. Clear application session cookies
     const cookieStore = cookies();
     cookieStore.delete('campusfix_session');
     cookieStore.delete('campusfix_logged_in');

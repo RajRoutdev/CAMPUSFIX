@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getDatabaseClient } from '@/lib/supabase/db';
 import { getInMemoryIssues } from '@/lib/issues/store';
 import { calculateCampusAnalytics } from '@/lib/analytics/engine';
 import { IssueWithRelations } from '@/types/models';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -35,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     // Try Supabase if configured
     try {
-      const supabase = createServerSupabaseClient();
+      const supabase = getDatabaseClient();
       let query = supabase
         .from('issues')
         .select(`

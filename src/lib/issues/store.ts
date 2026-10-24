@@ -1,9 +1,21 @@
 import type { IssueWithRelations, IssueStatus, IssueSeverity } from '@/types/models';
 import { PREDEFINED_LOCATIONS } from '@/lib/locations/data';
+import { getLocationById, getSuggestedDepartmentForCategory } from '@/lib/campus/store';
+
+import crypto from 'node:crypto';
 
 // In-memory fallback cache for development/demo mode when Supabase credentials are placeholders
-const memoryIssues: Map<string, IssueWithRelations> = new Map();
-let ticketCounter = 1001;
+// Attached to globalThis to preserve store across Next.js worker threads and hot reloads
+const globalForIssues = globalThis as unknown as {
+  __campusfix_issues__?: Map<string, IssueWithRelations>;
+  __campusfix_ticket_counter__?: number;
+};
+
+const memoryIssues: Map<string, IssueWithRelations> =
+  globalForIssues.__campusfix_issues__ || new Map();
+globalForIssues.__campusfix_issues__ = memoryIssues;
+
+let ticketCounter = globalForIssues.__campusfix_ticket_counter__ || 1009;
 
 // Seed initial realistic demo tickets for Apex Institute of Technology
 function seedInitialIssues() {
@@ -484,13 +496,16 @@ function seedInitialIssues() {
   memoryIssues.set(id8, issue8);
   memoryIssues.set(t8, issue8);
 
-  ticketCounter = 1009;
+  ticketCounter = Math.max(ticketCounter, 1009);
+  globalForIssues.__campusfix_ticket_counter__ = ticketCounter;
 }
 
 // Initialize seed data
 seedInitialIssues();
 
 export function saveInMemoryIssue(issueData: {
+  id?: string;
+  ticket_number?: string;
   title: string;
   description: string;
   category: string;
@@ -502,23 +517,42 @@ export function saveInMemoryIssue(issueData: {
   image_url?: string;
   evidence?: string[];
 }): IssueWithRelations {
-  const id = `issue-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-  const ticketNumber = `CF-${ticketCounter++}`;
+  const id = issueData.id || crypto.randomUUID();
+  let ticketNumber = issueData.ticket_number;
+  if (!ticketNumber) {
+    ticketCounter = Math.max(ticketCounter, globalForIssues.__campusfix_ticket_counter__ || 1009);
+    ticketNumber = `CF-${ticketCounter++}`;
+    globalForIssues.__campusfix_ticket_counter__ = ticketCounter;
+  }
   const now = new Date().toISOString();
 
-  const location = PREDEFINED_LOCATIONS.find((l) => l.id === issueData.location_id) || PREDEFINED_LOCATIONS[0];
+  const collegeId = issueData.college_id || '11111111-1111-1111-1111-111111111111';
+  const location =
+    getLocationById(issueData.location_id) ||
+    PREDEFINED_LOCATIONS.find((l) => l.id === issueData.location_id) ||
+    PREDEFINED_LOCATIONS[0];
+
+  // Auto-route department if not explicitly set
+  const routedDepartment = issueData.department_id
+    ? null
+    : getSuggestedDepartmentForCategory(collegeId, issueData.category);
+
+  const finalDepartmentId =
+    issueData.department_id ||
+    routedDepartment?.id ||
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 
   const issue: IssueWithRelations = {
     id,
     ticket_number: ticketNumber,
-    college_id: issueData.college_id || '11111111-1111-1111-1111-111111111111',
+    college_id: collegeId,
     reported_by: issueData.reported_by || 'e1111111-1111-1111-1111-111111111111',
     title: issueData.title,
     description: issueData.description,
     category: issueData.category,
     severity: issueData.severity,
     status: 'NEW',
-    department_id: issueData.department_id || 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    department_id: finalDepartmentId,
     assigned_to: null,
     location_id: location.id,
     created_at: now,

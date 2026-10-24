@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getDatabaseClient } from '@/lib/supabase/db';
 import {
   getInMemoryIssueById,
   assignInMemoryIssue,
 } from '@/lib/issues/store';
+
+export const dynamic = 'force-dynamic';
 
 export async function PATCH(
   req: NextRequest,
@@ -38,7 +40,7 @@ export async function PATCH(
     let existingIssue = getInMemoryIssueById(id);
     if (!existingIssue) {
       try {
-        const supabase = createServerSupabaseClient();
+        const supabase = getDatabaseClient();
         const isTicket = id.startsWith('CF-');
         const query = isTicket
           ? supabase.from('issues').select('*').eq('ticket_number', id).single()
@@ -70,7 +72,7 @@ export async function PATCH(
     let updatedIssue = null;
 
     try {
-      const supabase = createServerSupabaseClient();
+      const supabase = getDatabaseClient();
       const now = new Date().toISOString();
       const updatePayload: any = { updated_at: now };
 
@@ -99,13 +101,14 @@ export async function PATCH(
       // Supabase unavailable
     }
 
-    // In-memory fallback
+    // Always synchronize in-memory store
+    const memUpdated = assignInMemoryIssue(existingIssue.id, {
+      assigned_to,
+      department_id,
+      userId,
+    });
     if (!updatedIssue) {
-      updatedIssue = assignInMemoryIssue(existingIssue.id, {
-        assigned_to,
-        department_id,
-        userId,
-      });
+      updatedIssue = memUpdated;
     }
 
     return NextResponse.json({ success: true, issue: updatedIssue });

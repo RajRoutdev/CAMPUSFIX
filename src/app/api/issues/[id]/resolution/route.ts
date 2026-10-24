@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getDatabaseClient } from '@/lib/supabase/db';
+import { uploadIssueImage } from '@/lib/supabase/storage';
 import {
   getInMemoryIssueById,
   addInMemoryResolution,
 } from '@/lib/issues/store';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(
   req: NextRequest,
@@ -52,7 +55,7 @@ export async function POST(
     let existingIssue = getInMemoryIssueById(id);
     if (!existingIssue) {
       try {
-        const supabase = createServerSupabaseClient();
+        const supabase = getDatabaseClient();
         const isTicket = id.startsWith('CF-');
         const query = isTicket
           ? supabase.from('issues').select('*').eq('ticket_number', id).single()
@@ -83,9 +86,15 @@ export async function POST(
     // 3. Persist Resolution Evidence
     let updatedIssue = null;
 
-    // Try live Supabase insertion
+    // Upload resolution image to Supabase Storage if data URI, returning CDN URL
+    let finalImageUrl = image_url;
+    if (image_url && image_url.startsWith('data:image/')) {
+      finalImageUrl = await uploadIssueImage(image_url, 'resolution');
+    }
+
+    // Try live Supabase insertion via getDatabaseClient()
     try {
-      const supabase = createServerSupabaseClient();
+      const supabase = getDatabaseClient();
       const now = new Date().toISOString();
 
       // Update issue status to RESOLUTION_SUBMITTED
@@ -103,7 +112,7 @@ export async function POST(
         // Insert resolution proof image
         await supabase.from('issue_images').insert({
           issue_id: existingIssue.id,
-          image_url,
+          image_url: finalImageUrl,
           image_type: 'resolution',
         });
 
@@ -112,7 +121,7 @@ export async function POST(
           issue_id: existingIssue.id,
           user_id: userId,
           action: 'RESOLUTION_SUBMITTED',
-          metadata: { notes, image_url },
+          metadata: { notes, image_url: finalImageUrl },
         });
 
         updatedIssue = issueData;
@@ -121,13 +130,14 @@ export async function POST(
       // Supabase unavailable or using placeholder configuration
     }
 
-    // Fallback to in-memory store
+    // Always synchronize with in-memory store
+    const memUpdated = addInMemoryResolution(existingIssue.id, {
+      notes,
+      image_url: finalImageUrl,
+      userId,
+    });
     if (!updatedIssue) {
-      updatedIssue = addInMemoryResolution(existingIssue.id, {
-        notes,
-        image_url,
-        userId,
-      });
+      updatedIssue = memUpdated;
     }
 
     return NextResponse.json(

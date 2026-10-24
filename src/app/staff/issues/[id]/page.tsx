@@ -51,7 +51,7 @@ export default function StaffIssueDetailPage() {
   const fetchIssue = async () => {
     if (!id) return;
     try {
-      const res = await fetch(`/api/issues/${id}`);
+      const res = await fetch(`/api/issues/${id}`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Ticket not found or access forbidden');
       }

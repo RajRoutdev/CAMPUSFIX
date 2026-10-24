@@ -44,7 +44,7 @@ export default function AdminIssuesPage() {
       if (categoryFilter !== 'ALL') params.set('category', categoryFilter);
       if (search.trim()) params.set('search', search.trim());
 
-      const res = await fetch(`/api/issues?${params.toString()}`);
+      const res = await fetch(`/api/issues?${params.toString()}`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Failed to load issues');
       }

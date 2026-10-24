@@ -46,8 +46,8 @@ export default function AdminAnalyticsPage() {
     setError(null);
     try {
       const [analyticsRes, insightsRes] = await Promise.all([
-        fetch('/api/analytics'),
-        fetch('/api/insights'),
+        fetch('/api/analytics', { cache: 'no-store' }),
+        fetch('/api/insights', { cache: 'no-store' }),
       ]);
 
       if (!analyticsRes.ok) {

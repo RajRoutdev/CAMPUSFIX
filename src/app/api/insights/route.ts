@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
+import { getDatabaseClient } from '@/lib/supabase/db';
 import { getInMemoryIssues } from '@/lib/issues/store';
 import { calculateCampusAnalytics } from '@/lib/analytics/engine';
+import { IssueWithRelations } from '@/types/models';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,11 +25,49 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 1. Compute deterministic metrics first (Rule 25: AI does not invent numbers)
+    // 1. Fetch merged issues scoped strictly by authenticated user's college
+    let collegeIssues: IssueWithRelations[] = [];
     const memoryPool = getInMemoryIssues().filter(
       (i) => !profile.college_id || !i.college_id || i.college_id === profile.college_id
     );
-    const analytics = calculateCampusAnalytics(memoryPool);
+    collegeIssues = [...memoryPool];
+
+    // Try Supabase if configured
+    try {
+      const supabase = getDatabaseClient();
+      let query = supabase
+        .from('issues')
+        .select(`
+          *,
+          location:locations(*),
+          department:departments(*),
+          reporter:profiles!reported_by(*),
+          assignee:profiles!assigned_to(*),
+          images:issue_images(*),
+          activity_logs:activity_logs(*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (profile.college_id) {
+        query = query.eq('college_id', profile.college_id);
+      }
+
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        const seen = new Set(collegeIssues.map((i) => i.id));
+        for (const item of (data as any[])) {
+          if (!seen.has(item.id)) {
+            collegeIssues.push(item as IssueWithRelations);
+            seen.add(item.id);
+          }
+        }
+      }
+    } catch {
+      // Supabase unavailable; proceed with in-memory college issues
+    }
+
+    // 2. Compute deterministic metrics first (Rule 25: AI does not invent numbers)
+    const analytics = calculateCampusAnalytics(collegeIssues);
 
     const topHotspot = analytics.building_hotspots[0]?.building || 'Block B';
     const topRecurring = analytics.recurring_issues[0]?.summary || 'Room 204 has repeated electrical fixture repairs';

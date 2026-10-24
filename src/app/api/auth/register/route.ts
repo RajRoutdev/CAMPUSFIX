@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { registerUser, findUserByEmail } from '@/lib/auth/user-store';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getDatabaseClient } from '@/lib/supabase/db';
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,14 +57,15 @@ export async function POST(req: NextRequest) {
 
       if (!authError && authData.user) {
         supabaseUserId = authData.user.id;
-        // Insert profile
-        await supabase.from('profiles').insert({
+        // Insert or upsert profile using getDatabaseClient() to bypass PostgreSQL RLS on server
+        const db = getDatabaseClient();
+        await db.from('profiles').upsert({
           id: authData.user.id,
           name,
           email,
           role: trustedRole,
           college_id,
-        });
+        }, { onConflict: 'id' });
       }
     } catch {
       // Supabase is offline or tables are not yet initialized; proceed with local store
@@ -89,6 +91,7 @@ export async function POST(req: NextRequest) {
       name: newUser.name,
       college_id: newUser.college_id,
       department_id: null,
+      role: trustedRole,
     };
 
     const cookieStore = cookies();

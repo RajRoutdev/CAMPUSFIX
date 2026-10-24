@@ -33,7 +33,7 @@ export default function StudentDashboardPage() {
   const fetchIssues = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/issues');
+      const res = await fetch('/api/issues', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setIssues(data.issues || []);

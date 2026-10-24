@@ -44,8 +44,15 @@ export async function middleware(request: NextRequest) {
         if (trustedRoleById && trustedRoleById === trustedRoleByEmail) {
           userRole = trustedRoleById;
           isAuthenticated = true;
+        } else if (parsed.userId && parsed.email) {
+          // Registered user with valid httpOnly session cookie:
+          // Strictly read verified role from httpOnly session cookie, NOT client-modifiable cookie
+          const sessionRole = parsed.role;
+          userRole = (sessionRole === 'admin' || sessionRole === 'staff' || sessionRole === 'student')
+            ? sessionRole
+            : 'student';
+          isAuthenticated = true;
         }
-        // If userId/email don't match a known demo account, do NOT authenticate
       }
     } catch {
       // invalid cookie
@@ -99,10 +106,11 @@ export async function middleware(request: NextRequest) {
 
   // 3. Route Access Guards
 
-  // Portal-specific login pages: allow access when unauthenticated
+  // Portal-specific login & registration pages: allow access when unauthenticated
   if (
     pathname === '/login' ||
     pathname === '/student/login' ||
+    pathname === '/student/register' ||
     pathname === '/staff/login' ||
     pathname === '/admin/login'
   ) {

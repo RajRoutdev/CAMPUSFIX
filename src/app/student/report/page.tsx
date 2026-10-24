@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -21,6 +21,7 @@ import {
   Clock,
   Layers,
   Check,
+  Building2,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,15 +35,115 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { PREDEFINED_LOCATIONS, formatLocationString } from '@/lib/locations/data';
 import { AnalyzeResult } from '@/lib/gemini/schema';
 import type { DuplicateCandidate } from '@/lib/duplicates/detector';
+import type { Location } from '@/types/models';
 
 export default function StudentReportPage() {
   const router = useRouter();
 
+  // Dynamic Location State (Feature 7: Database-backed cascading locations)
+  const [locations, setLocations] = useState<Location[]>(PREDEFINED_LOCATIONS as unknown as Location[]);
+  const [selectedBuilding, setSelectedBuilding] = useState<string>(PREDEFINED_LOCATIONS[0].building);
+  const [selectedFloor, setSelectedFloor] = useState<string>(PREDEFINED_LOCATIONS[0].floor);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>(PREDEFINED_LOCATIONS[0].id);
+  const [locationMode, setLocationMode] = useState<'hierarchy' | 'flat'>('hierarchy');
+  const [loadingLocations, setLoadingLocations] = useState(false);
+
   // Form State
-  const [selectedLocationId, setSelectedLocationId] = useState(PREDEFINED_LOCATIONS[0].id);
   const [studentDescription, setStudentDescription] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState('');
+
+  // Fetch live database-backed locations on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCampusLocations() {
+      try {
+        setLoadingLocations(true);
+        const res = await fetch('/api/campus/locations');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data.locations) && data.locations.length > 0) {
+            setLocations(data.locations);
+            const first = data.locations[0];
+            setSelectedBuilding(first.building);
+            setSelectedFloor(first.floor);
+            setSelectedLocationId(first.id);
+          }
+        }
+      } catch {
+        // Fallback gracefully to PREDEFINED_LOCATIONS
+      } finally {
+        if (isMounted) setLoadingLocations(false);
+      }
+    }
+    loadCampusLocations();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Filter available buildings, floors, and rooms dynamically
+  const availableBuildings = useMemo(() => {
+    const unique = new Set<string>();
+    locations.forEach((loc) => unique.add(loc.building));
+    return Array.from(unique);
+  }, [locations]);
+
+  const availableFloors = useMemo(() => {
+    if (!selectedBuilding) return [];
+    const unique = new Set<string>();
+    locations
+      .filter((loc) => loc.building === selectedBuilding)
+      .forEach((loc) => unique.add(loc.floor));
+    return Array.from(unique);
+  }, [locations, selectedBuilding]);
+
+  const availableRooms = useMemo(() => {
+    if (!selectedBuilding || !selectedFloor) return [];
+    return locations.filter(
+      (loc) => loc.building === selectedBuilding && loc.floor === selectedFloor
+    );
+  }, [locations, selectedBuilding, selectedFloor]);
+
+  // Cascading Handlers
+  const handleBuildingChange = (building: string) => {
+    setSelectedBuilding(building);
+    const matchingFloors = Array.from(
+      new Set(locations.filter((l) => l.building === building).map((l) => l.floor))
+    );
+    const nextFloor = matchingFloors[0] || '';
+    setSelectedFloor(nextFloor);
+
+    const matchingRooms = locations.filter(
+      (l) => l.building === building && l.floor === nextFloor
+    );
+    if (matchingRooms.length > 0) {
+      setSelectedLocationId(matchingRooms[0].id);
+    }
+  };
+
+  const handleFloorChange = (floor: string) => {
+    setSelectedFloor(floor);
+    const matchingRooms = locations.filter(
+      (l) => l.building === selectedBuilding && l.floor === floor
+    );
+    if (matchingRooms.length > 0) {
+      setSelectedLocationId(matchingRooms[0].id);
+    }
+  };
+
+  const handleRoomChange = (locId: string) => {
+    setSelectedLocationId(locId);
+  };
+
+  const handleFlatLocationChange = (locId: string) => {
+    setSelectedLocationId(locId);
+    const found = locations.find((l) => l.id === locId);
+    if (found) {
+      setSelectedBuilding(found.building);
+      setSelectedFloor(found.floor);
+    }
+  };
 
   // Workflow State
   const [analyzing, setAnalyzing] = useState(false);
@@ -94,7 +195,9 @@ export default function StudentReportPage() {
     setAnalyzing(true);
     setError(null);
 
-    const locationObj = PREDEFINED_LOCATIONS.find((l) => l.id === selectedLocationId);
+    const locationObj =
+      locations.find((l) => l.id === selectedLocationId) ||
+      PREDEFINED_LOCATIONS.find((l) => l.id === selectedLocationId);
     const locationText = locationObj ? formatLocationString(locationObj) : '';
 
     try {
@@ -267,7 +370,9 @@ export default function StudentReportPage() {
     });
   };
 
-  const currentLocation = PREDEFINED_LOCATIONS.find((l) => l.id === selectedLocationId);
+  const currentLocation =
+    locations.find((l) => l.id === selectedLocationId) ||
+    PREDEFINED_LOCATIONS.find((l) => l.id === selectedLocationId);
 
   return (
     <div className="container max-w-2xl mx-auto px-4 py-6 sm:py-8 space-y-6">
@@ -424,29 +529,122 @@ export default function StudentReportPage() {
                 )}
               </div>
 
-              {/* Location Selector */}
-              <div className="space-y-2">
-                <Label htmlFor="location-select" className="text-xs font-semibold text-slate-700">
-                  Campus Location <span className="text-rose-500">*</span>
-                </Label>
-                <div className="relative">
-                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                  <select
-                    id="location-select"
-                    value={selectedLocationId}
-                    onChange={(e) => setSelectedLocationId(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-white pl-9 pr-3 text-xs sm:text-sm shadow-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-medium"
-                    required
-                  >
-                    {PREDEFINED_LOCATIONS.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.building} &bull; {loc.floor} &bull; {loc.room} {loc.area ? `(${loc.area})` : ''}
-                      </option>
-                    ))}
-                  </select>
+              {/* Dynamic Location Selector (Feature 7: Building -> Floor -> Room) */}
+              <div className="space-y-3 p-3.5 rounded-lg border border-slate-200 bg-slate-50/70">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    <Label htmlFor="location-select" className="text-xs font-semibold text-slate-900">
+                      Campus Location <span className="text-rose-500">*</span>
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {loadingLocations && (
+                      <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                        Loading...
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setLocationMode(locationMode === 'hierarchy' ? 'flat' : 'hierarchy')}
+                      className="text-[11px] font-medium text-primary hover:underline"
+                    >
+                      {locationMode === 'hierarchy' ? 'All List' : '3-Tier View'}
+                    </button>
+                  </div>
                 </div>
+
+                {locationMode === 'hierarchy' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {/* Tier 1: Building */}
+                    <div className="space-y-1">
+                      <label htmlFor="location-select" className="text-[11px] font-medium text-slate-600 flex items-center gap-1">
+                        <Building2 className="w-3 h-3 text-slate-400" />
+                        1. Building / Block
+                      </label>
+                      <select
+                        id="location-select"
+                        aria-label="Select building or block"
+                        value={selectedBuilding}
+                        onChange={(e) => handleBuildingChange(e.target.value)}
+                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs shadow-xs focus:ring-2 focus:ring-primary focus:border-transparent font-medium"
+                      >
+                        {availableBuildings.map((b) => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Tier 2: Floor */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-slate-600 flex items-center gap-1">
+                        <Layers className="w-3 h-3 text-slate-400" />
+                        2. Floor / Level
+                      </label>
+                      <select
+                        aria-label="Select floor or level"
+                        value={selectedFloor}
+                        onChange={(e) => handleFloorChange(e.target.value)}
+                        disabled={availableFloors.length === 0}
+                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs shadow-xs focus:ring-2 focus:ring-primary focus:border-transparent font-medium disabled:opacity-50"
+                      >
+                        {availableFloors.map((f) => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Tier 3: Room / Area */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-slate-600 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-slate-400" />
+                        3. Room / Area
+                      </label>
+                      <select
+                        aria-label="Select room or area"
+                        value={selectedLocationId}
+                        onChange={(e) => handleRoomChange(e.target.value)}
+                        disabled={availableRooms.length === 0}
+                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs shadow-xs focus:ring-2 focus:ring-primary focus:border-transparent font-medium disabled:opacity-50"
+                      >
+                        {availableRooms.map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.room} {loc.area ? `(${loc.area})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <select
+                      aria-label="Select campus location from list"
+                      value={selectedLocationId}
+                      onChange={(e) => handleFlatLocationChange(e.target.value)}
+                      className="w-full h-9 rounded-md border border-slate-300 bg-white px-2.5 text-xs shadow-xs focus:ring-2 focus:ring-primary focus:border-transparent font-medium"
+                    >
+                      {locations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.building} &bull; {loc.floor} &bull; {loc.room} {loc.area ? `(${loc.area})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Selected Location Summary Badge */}
+                {currentLocation && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-white border border-slate-200 text-[11px] text-slate-700">
+                    <span className="font-semibold text-primary">Selected:</span>
+                    <span className="truncate">
+                      {currentLocation.building} &bull; {currentLocation.floor} &bull; {currentLocation.room}
+                      {currentLocation.area ? ` (${currentLocation.area})` : ''}
+                    </span>
+                  </div>
+                )}
                 <p className="text-[11px] text-slate-500">
-                  Pinpoints department crews to the exact classroom or laboratory.
+                  Pinpoints department crews to the exact classroom, lab, or outdoor facility.
                 </p>
               </div>
 

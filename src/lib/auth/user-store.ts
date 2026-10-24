@@ -15,7 +15,14 @@ export interface RegisteredUser {
 }
 
 // Global in-memory user registry for robust operation across server invocations
-const globalUsers: Map<string, RegisteredUser> = new Map();
+// Attached to globalThis to preserve registered accounts across worker threads
+const globalForUsers = globalThis as unknown as {
+  __campusfix_users__?: Map<string, RegisteredUser>;
+};
+
+const globalUsers: Map<string, RegisteredUser> =
+  globalForUsers.__campusfix_users__ || new Map();
+globalForUsers.__campusfix_users__ = globalUsers;
 
 function hashPassword(password: string, salt: string): string {
   return crypto.pbkdf2Sync(password, salt, 1000, 32, 'sha256').toString('hex');
@@ -63,7 +70,7 @@ export function registerUser(params: {
 
   const salt = crypto.randomBytes(16).toString('hex');
   const passwordHash = hashPassword(params.password, salt);
-  const id = `user-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const id = crypto.randomUUID();
 
   const user: RegisteredUser = {
     id,

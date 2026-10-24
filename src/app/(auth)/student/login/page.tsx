@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { GraduationCap, Mail, Lock, ArrowRight, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 
 function StudentLoginForm() {
   const router = useRouter();
@@ -18,7 +19,14 @@ function StudentLoginForm() {
   const [password, setPassword] = useState('Password123!');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(searchParams.get('error'));
+
+  useEffect(() => {
+    const queryError = searchParams.get('error');
+    if (queryError) {
+      setError(queryError);
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +85,23 @@ function StudentLoginForm() {
             <AlertDescription className="text-xs">{error}</AlertDescription>
           </Alert>
         )}
+
+        <GoogleSignInButton
+          portal="student"
+          redirectTarget={searchParams.get('redirectTo') || '/student/dashboard'}
+          onError={(err) => setError(err)}
+        />
+
+        <div className="relative my-1">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-slate-200" />
+          </div>
+          <div className="relative flex justify-center text-[11px] uppercase">
+            <span className="bg-white px-2 text-slate-400 font-medium tracking-wider">
+              Or continue with email
+            </span>
+          </div>
+        </div>
 
         <form onSubmit={handleLogin} className="space-y-3">
           <div className="space-y-1">

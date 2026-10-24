@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getDatabaseClient } from '@/lib/supabase/db';
 import { getInMemoryIssues } from '@/lib/issues/store';
 import { PREDEFINED_LOCATIONS } from '@/lib/locations/data';
+import { getLocationById } from '@/lib/campus/store';
 import {
   findDuplicateCandidates,
   DEFAULT_DUPLICATE_THRESHOLD,
   DuplicateInput,
 } from '@/lib/duplicates/detector';
 import { IssueWithRelations } from '@/types/models';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,7 +43,9 @@ export async function POST(req: NextRequest) {
 
     // 2. Resolve location object
     const locationObj =
-      PREDEFINED_LOCATIONS.find((l) => l.id === location_id) || null;
+      getLocationById(location_id) ||
+      PREDEFINED_LOCATIONS.find((l) => l.id === location_id) ||
+      null;
 
     const duplicateInput: DuplicateInput = {
       title,
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     // Try Supabase if configured
     try {
-      const supabase = createServerSupabaseClient();
+      const supabase = getDatabaseClient();
       let query = supabase
         .from('issues')
         .select(`

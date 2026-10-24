@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/issues');
+      const res = await fetch('/api/issues', { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Failed to load campus issues');
       }

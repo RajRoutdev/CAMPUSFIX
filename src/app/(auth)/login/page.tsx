@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ShieldCheck, GraduationCap, Wrench, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -13,6 +13,14 @@ import Link from 'next/link';
 function LoginSelector() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [error, setError] = useState<string | null>(searchParams.get('error'));
+
+  useEffect(() => {
+    const queryError = searchParams.get('error');
+    if (queryError) {
+      setError(queryError);
+    }
+  }, [searchParams]);
 
   const portals = [
     {
@@ -56,6 +64,12 @@ function LoginSelector() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription className="text-xs">{error}</AlertDescription>
+          </Alert>
+        )}
+
         {portals.map((portal) => {
           const Icon = portal.icon;
           return (
