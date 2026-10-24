@@ -41,11 +41,11 @@ function StaffLoginForm() {
       });
 
       if (res.ok) {
-        if (redirectTarget && redirectTarget.startsWith('/staff')) {
-          router.push(redirectTarget);
-        } else {
-          router.push('/staff/dashboard');
-        }
+        const destination =
+          redirectTarget && redirectTarget.startsWith('/staff')
+            ? redirectTarget
+            : '/staff/dashboard';
+        window.location.href = destination;
         return;
       }
 

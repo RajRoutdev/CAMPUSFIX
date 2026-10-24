@@ -9,33 +9,15 @@ export async function getCurrentUser(): Promise<{
   profile: Profile | null;
   error: string | null;
 }> {
-  // 1. Try Live Supabase Auth Session
-  try {
-    const supabase = createServerSupabaseClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const cookieStore = cookies();
 
-    if (!authError && user) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (!profileError && profile) {
-        return { userId: user.id, profile: profile as Profile, error: null };
-      }
-    }
-  } catch {
-    // Supabase unavailable or using placeholder configuration
-  }
-
-  // 2. Fallback to Session Cookie (Guarantees reliable local & hackathon testing)
+  // 1. FAST PATH: Check Session Cookie First (< 1ms local resolution)
+  //    Avoids slow remote Supabase network roundtrips on every API call.
   //    SECURITY HARDENING (Phase 8):
   //    - Cross-reference cookie email against DEMO_ACCOUNTS and server-side user store
   //    - Use the TRUSTED role from server store, not from the cookie payload
   //    - This prevents role escalation via cookie tampering
   try {
-    const cookieStore = cookies();
     const demoCookie = cookieStore.get('campusfix_session')?.value;
 
     if (demoCookie) {
@@ -92,6 +74,32 @@ export async function getCurrentUser(): Promise<{
     }
   } catch {
     // Cookie parsing error
+  }
+
+  // 2. Fallback to Live Supabase Auth Session (Only when Supabase token cookies exist)
+  const hasSupabaseCookie = cookieStore
+    .getAll()
+    .some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'));
+
+  if (hasSupabaseCookie) {
+    try {
+      const supabase = createServerSupabaseClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (!authError && user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (!profileError && profile) {
+          return { userId: user.id, profile: profile as Profile, error: null };
+        }
+      }
+    } catch {
+      // Supabase unavailable or using placeholder configuration
+    }
   }
 
   return { userId: null, profile: null, error: 'Not authenticated' };

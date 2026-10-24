@@ -51,7 +51,7 @@ export default function StudentRegisterPage() {
       });
 
       if (res.ok) {
-        router.push('/student/dashboard');
+        window.location.href = '/student/dashboard';
         return;
       }
 

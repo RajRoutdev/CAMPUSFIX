@@ -61,45 +61,57 @@ export async function middleware(request: NextRequest) {
 
   // 2. Try Supabase Auth Session (if not already authenticated via demo)
   if (!isAuthenticated) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // FAST PATH: Skip remote Supabase verification on public auth endpoints or when no Supabase cookies exist
+    const isPublicAuthRoute =
+      pathname === '/api/auth/login' ||
+      pathname === '/api/auth/register' ||
+      pathname === '/api/auth/callback';
 
-    if (url && anonKey) {
-      try {
-        const supabase = createServerClient<Database>(url, anonKey, {
-          cookies: {
-            getAll() {
-              return request.cookies.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-              response = NextResponse.next({
-                request,
-              });
-              cookiesToSet.forEach(({ name, value, options }) =>
-                response.cookies.set(name, value, options)
-              );
-            },
-          },
-        });
+    const hasSupabaseCookie = request.cookies
+      .getAll()
+      .some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'));
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          isAuthenticated = true;
-          // SECURITY: Resolve role from trusted email-to-role mapping
-          // rather than naive email string matching
-          const emailLower = (user.email || '').toLowerCase();
-          const knownRole = DEMO_EMAIL_ROLES[emailLower];
-          if (knownRole) {
-            userRole = knownRole;
-          } else {
-            // For non-demo Supabase users, default to student
-            // (API routes will enforce actual profile role from DB)
-            userRole = 'student';
+    if (!isPublicAuthRoute && hasSupabaseCookie) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (url && anonKey) {
+        try {
+          const supabase = createServerClient<Database>(url, anonKey, {
+            cookies: {
+              getAll() {
+                return request.cookies.getAll();
+              },
+              setAll(cookiesToSet) {
+                cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+                response = NextResponse.next({
+                  request,
+                });
+                cookiesToSet.forEach(({ name, value, options }) =>
+                  response.cookies.set(name, value, options)
+                );
+              },
+            },
+          });
+
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            isAuthenticated = true;
+            // SECURITY: Resolve role from trusted email-to-role mapping
+            // rather than naive email string matching
+            const emailLower = (user.email || '').toLowerCase();
+            const knownRole = DEMO_EMAIL_ROLES[emailLower];
+            if (knownRole) {
+              userRole = knownRole;
+            } else {
+              // For non-demo Supabase users, default to student
+              // (API routes will enforce actual profile role from DB)
+              userRole = 'student';
+            }
           }
+        } catch {
+          // Supabase unavailable or using placeholder configuration
         }
-      } catch {
-        // Supabase unavailable or using placeholder configuration
       }
     }
   }

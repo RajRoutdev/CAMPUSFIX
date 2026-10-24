@@ -41,11 +41,11 @@ function AdminLoginForm() {
       });
 
       if (res.ok) {
-        if (redirectTarget && redirectTarget.startsWith('/admin')) {
-          router.push(redirectTarget);
-        } else {
-          router.push('/admin/dashboard');
-        }
+        const destination =
+          redirectTarget && redirectTarget.startsWith('/admin')
+            ? redirectTarget
+            : '/admin/dashboard';
+        window.location.href = destination;
         return;
       }
 

@@ -40,10 +40,10 @@ export async function POST(req: NextRequest) {
 
     let supabaseUserId: string | null = null;
 
-    // 4. Attempt live Supabase Auth creation if configured
+    // 4. Attempt live Supabase Auth creation if configured (with timeout to prevent lagging)
     try {
       const supabase = createServerSupabaseClient();
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const signUpPromise = supabase.auth.signUp({
         email,
         password,
         options: {
@@ -55,7 +55,19 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      if (!authError && authData.user) {
+      const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((resolve) =>
+        setTimeout(
+          () => resolve({ data: { user: null }, error: new Error('Supabase Auth timeout') }),
+          1500
+        )
+      );
+
+      const { data: authData, error: authError } = await Promise.race([
+        signUpPromise,
+        timeoutPromise,
+      ]);
+
+      if (!authError && authData?.user) {
         supabaseUserId = authData.user.id;
         // Insert or upsert profile using getDatabaseClient() to bypass PostgreSQL RLS on server
         const db = getDatabaseClient();

@@ -47,12 +47,11 @@ function StudentLoginForm() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        if (redirectTarget && redirectTarget.startsWith('/student')) {
-          router.push(redirectTarget);
-        } else {
-          router.push('/student/dashboard');
-        }
+        const destination =
+          redirectTarget && redirectTarget.startsWith('/student')
+            ? redirectTarget
+            : '/student/dashboard';
+        window.location.href = destination;
         return;
       }
 
